@@ -727,10 +727,7 @@ E a todos os usuários que reportaram bugs e sugeriram melhorias!
 **Relatório:** [Security Scan v1.2.0](reports/security-scan-v1.2.0.pdf)
 
 ### Management Approval
-**Aprovador:** Pedro Oliveira, Gerente de TI  
-**Data:** 09/02/2026 16:00  
-**Status:** ✅ Aprovado
-
+**Aprovador:** Pedro Oliveira  
 ---
 
 ## CERTIFICAÇÃO

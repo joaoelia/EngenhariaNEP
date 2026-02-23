@@ -1,0 +1,13 @@
+package com.aerogestor.auth.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+public class AuthResponse {
+    private String accessToken;
+    private String tokenType;
+    private String username;
+    private String role;
+}
