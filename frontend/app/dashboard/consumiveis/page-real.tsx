@@ -145,12 +145,14 @@ export default function ConsumiveisPage() {
           <p className="text-slate-600 mt-1">Gerenciamento de consumíveis e materiais</p>
         </div>
         <div className="flex gap-3">
-          <RetiradaDialog consumiveis={consumiveis}>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <ArrowDownToLine className="h-4 w-4 mr-2" />
-              Retirada
-            </Button>
-          </RetiradaDialog>
+          {consumiveis.length > 0 && (
+            <RetiradaDialog consumiveis={consumiveis}>
+              <Button className="bg-green-600 hover:bg-green-700">
+                <ArrowDownToLine className="h-4 w-4 mr-2" />
+                Retirada
+              </Button>
+            </RetiradaDialog>
+          )}
           <Link href="/dashboard/consumiveis/novo">
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
