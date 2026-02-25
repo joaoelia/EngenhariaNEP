@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public class MateriaPrima {
     private String descricao;
 
     @Column(name = "tipo_material", nullable = false)
+    @JsonProperty("tipo_material")
     private String tipoMaterial;
 
     private Double densidade;
@@ -33,29 +35,35 @@ public class MateriaPrima {
     private String especificacao;
 
     @Column(name = "quantidade_estoque", nullable = false)
+    @JsonProperty("quantidade_estoque")
     private Double quantidadeEstoque;
 
     @Column(name = "unidade_medida", nullable = false)
+    @JsonProperty("unidade_medida")
     private String unidadeMedida;
 
     private String lote;
 
     @Column(name = "data_entrada")
+    @JsonProperty("data_entrada")
     private LocalDate dataEntrada;
 
     @Column(nullable = false)
     private String fornecedor;
 
     @Column(name = "certificado_qualidade")
+    @JsonProperty("certificado_qualidade")
     private String certificadoQualidade;
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;
 
     @Column(name = "created_at", updatable = false)
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
+    @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist

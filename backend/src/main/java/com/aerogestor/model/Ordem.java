@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,24 +21,29 @@ public class Ordem {
     private Long id;
 
     @Column(name = "numero_ordem", nullable = false, unique = true)
+    @JsonProperty("numero_ordem")
     private String numeroOrdem;
 
     @Column(name = "tipo_ordem", nullable = false)
+    @JsonProperty("tipo_ordem")
     private String tipoOrdem;
 
     @Column(nullable = false)
     private String projeto;
 
     @Column(name = "part_number", nullable = false)
+    @JsonProperty("part_number")
     private String partNumber;
 
     @Column(nullable = false)
     private String status;
 
     @Column(name = "data_criacao", nullable = false)
+    @JsonProperty("data_criacao")
     private LocalDate dataCriacao;
 
     @Column(name = "data_conclusao")
+    @JsonProperty("data_conclusao")
     private LocalDate dataConclusao;
 
     @Column(columnDefinition = "TEXT")
@@ -47,9 +53,11 @@ public class Ordem {
     private String observacoes;
 
     @Column(name = "created_at", updatable = false)
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
+    @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist

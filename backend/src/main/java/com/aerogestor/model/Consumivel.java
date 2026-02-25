@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +23,7 @@ public class Consumivel {
     private String nome;
 
     @Column(name = "part_number", nullable = false, unique = true)
+    @JsonProperty("part_number")
     private String partNumber;
 
     @Column(nullable = false)
@@ -31,12 +33,15 @@ public class Consumivel {
     private String fornecedor;
 
     @Column(name = "local_estoque", nullable = false)
+    @JsonProperty("local_estoque")
     private String localEstoque;
 
     @Column(name = "created_at", updatable = false)
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
+    @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist
