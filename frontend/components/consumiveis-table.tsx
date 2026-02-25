@@ -22,24 +22,46 @@ interface Consumivel {
 
 interface ConsumiveisTableProps {
   consumiveis: Consumivel[]
+  onDelete?: (id: string) => Promise<void>
+  onEdit?: (id: string, data: Record<string, any>) => Promise<void>
 }
 
-export function ConsumiveisTable({ consumiveis }: ConsumiveisTableProps) {
+export function ConsumiveisTable({ consumiveis, onDelete, onEdit }: ConsumiveisTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [viewItem, setViewItem] = useState<Consumivel | null>(null)
   const [editItem, setEditItem] = useState<Consumivel | null>(null)
   const [deleteItem, setDeleteItem] = useState<Consumivel | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSaveEdit = async (data: Record<string, any>) => {
-    // Aqui você faria a chamada à API para salvar
-    console.log("Salvando:", data)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!editItem || !onEdit) return
+    
+    try {
+      setIsLoading(true)
+      setError(null)
+      await onEdit(editItem.id, data)
+      setEditItem(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao atualizar")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleDelete = async () => {
-    // Aqui você faria a chamada à API para excluir
-    console.log("Excluindo:", deleteItem?.id)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!deleteItem || !onDelete) return
+    
+    try {
+      setIsLoading(true)
+      setError(null)
+      await onDelete(deleteItem.id)
+      setDeleteItem(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao deletar")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const filteredConsumiveis = consumiveis.filter((item) => {
@@ -65,6 +87,11 @@ export function ConsumiveisTable({ consumiveis }: ConsumiveisTableProps) {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <Input

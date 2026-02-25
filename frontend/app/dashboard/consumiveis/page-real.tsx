@@ -119,8 +119,16 @@ export default function ConsumiveisPage() {
     }
   }
 
-  // Dados mockados de retiradas
-  const retiradas: any[] = []
+  // Dados mockados de retiradas (pode ser implementado depois)
+  const retiradas = [
+    {
+      id: "1",
+      item_nome: "Parafuso Allen M6x20",
+      quantidade: 50,
+      pessoa: "João Silva",
+      data: "2024-03-15",
+    },
+  ]
 
   useEffect(() => {
     fetchConsumiveis()
@@ -137,14 +145,12 @@ export default function ConsumiveisPage() {
           <p className="text-slate-600 mt-1">Gerenciamento de consumíveis e materiais</p>
         </div>
         <div className="flex gap-3">
-          {consumiveis.length > 0 && (
-            <RetiradaDialog consumiveis={consumiveis}>
-              <Button className="bg-green-600 hover:bg-green-700">
-                <ArrowDownToLine className="h-4 w-4 mr-2" />
-                Retirada
-              </Button>
-            </RetiradaDialog>
-          )}
+          <RetiradaDialog consumiveis={consumiveis}>
+            <Button className="bg-green-600 hover:bg-green-700">
+              <ArrowDownToLine className="h-4 w-4 mr-2" />
+              Retirada
+            </Button>
+          </RetiradaDialog>
           <Link href="/dashboard/consumiveis/novo">
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
@@ -181,7 +187,7 @@ export default function ConsumiveisPage() {
             <CardHeader>
               <CardTitle>Lista de Consumíveis</CardTitle>
               <CardDescription>
-                {consumiveis.length} {consumiveis.length === 1 ? "consumível cadastrado" : "consumíveis cadastrados"}
+                {consumiveis.length} consumível{consumiveis.length !== 1 ? "s" : ""} cadastrado{consumiveis.length !== 1 ? "s" : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -193,13 +199,11 @@ export default function ConsumiveisPage() {
             </CardContent>
           </Card>
 
-          {retiradas.length > 0 && (
+          {consumiveis.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Retiradas</CardTitle>
-                <CardDescription>
-                  {retiradas.length} {retiradas.length === 1 ? "retirada registrada" : "retiradas registradas"}
-                </CardDescription>
+                <CardTitle>Retiradas Recentes</CardTitle>
+                <CardDescription>Últimas movimentações de material</CardDescription>
               </CardHeader>
               <CardContent>
                 <RetiradasTable retiradas={retiradas} />

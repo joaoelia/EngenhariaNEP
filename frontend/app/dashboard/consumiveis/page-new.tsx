@@ -119,7 +119,7 @@ export default function ConsumiveisPage() {
     }
   }
 
-  // Dados mockados de retiradas
+  // Dados mockados de retiradas (pode ser implementado depois)
   const retiradas: any[] = []
 
   useEffect(() => {
