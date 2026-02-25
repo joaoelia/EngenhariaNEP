@@ -1,48 +1,109 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Box, Wrench, ClipboardList } from "lucide-react"
+import { Package, Box, Wrench, ClipboardList, Loader } from "lucide-react"
 import Link from "next/link"
 
+interface Stat {
+  title: string
+  count: number | null
+  icon: any
+  href: string
+  color: string
+}
+
 export default function DashboardPage() {
-  // const supabase = await createClient()
-
-  // Buscar estatísticas
-  // const [consumiveis, materiaPrima, pecas, ordens] = await Promise.all([
-  //   supabase.from("consumiveis").select("id", { count: "exact" }),
-  //   supabase.from("materia_prima").select("id", { count: "exact" }),
-  //   supabase.from("pecas_fabricadas").select("id", { count: "exact" }),
-  //   supabase.from("ordens").select("id", { count: "exact" }),
-  // ])
-
-  const stats = [
+  const [stats, setStats] = useState<Stat[]>([
     {
       title: "Consumíveis",
-      count: 0,
+      count: null,
       icon: Package,
       href: "/dashboard/consumiveis",
       color: "bg-blue-500",
     },
     {
       title: "Matéria-Prima",
-      count: 0,
+      count: null,
       icon: Box,
       href: "/dashboard/materia-prima",
       color: "bg-green-500",
     },
     {
       title: "Peças Fabricadas",
-      count: 0,
+      count: null,
       icon: Wrench,
       href: "/dashboard/pecas",
       color: "bg-orange-500",
     },
     {
       title: "Ordens",
-      count: 0,
+      count: null,
       icon: ClipboardList,
       href: "/dashboard/ordens",
       color: "bg-purple-500",
     },
-  ]
+  ])
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("jwt_token")
+        if (!token) return
+
+        const endpoints = [
+          { name: 0, url: "http://localhost:8080/api/consumiveis" },
+          { name: 1, url: "http://localhost:8080/api/materia-prima" },
+          { name: 2, url: "http://localhost:8080/api/pecas" },
+          { name: 3, url: "http://localhost:8080/api/ordens" },
+        ]
+
+        const results = await Promise.all(
+          endpoints.map(async (endpoint) => {
+            try {
+              const response = await fetch(endpoint.url, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (!response.ok) throw new Error("Failed to fetch")
+              const data = await response.json()
+              return { index: endpoint.name, count: Array.isArray(data) ? data.length : 0 }
+            } catch {
+              return { index: endpoint.name, count: 0 }
+            }
+          })
+        )
+
+        setStats((prev) =>
+          prev.map((stat, idx) => {
+            const result = results.find((r) => r.index === idx)
+            return { ...stat, count: result?.count ?? 0 }
+          })
+        )
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error)
+      }
+    }
+
+    // Fetch immediate
+    fetchStats()
+
+    // Refresh a cada 10 segundos
+    const interval = setInterval(fetchStats, 10000)
+
+    // Refresh quando a página voltar ao foco
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchStats()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -64,7 +125,9 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stat.count}</div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {stat.count === null ? <Loader className="h-8 w-8 animate-spin" /> : stat.count}
+                  </div>
                   <CardDescription className="text-xs mt-1">Total de registros</CardDescription>
                 </CardContent>
               </Card>
