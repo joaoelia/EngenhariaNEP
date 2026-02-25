@@ -47,6 +47,11 @@ public class RetiradaService {
             case "consumivel":
                 Consumivel consumivel = consumivelRepository.findById(retirada.getItemId())
                         .orElseThrow(() -> new RuntimeException("Consumível não encontrado com id: " + retirada.getItemId()));
+
+                retirada.setItemNome(consumivel.getNome());
+                retirada.setItemPartNumber(consumivel.getPartNumber());
+                retirada.setItemFornecedor(consumivel.getFornecedor());
+                retirada.setItemLocalEstoque(consumivel.getLocalEstoque());
                 
                 // Validar se há quantidade suficiente
                 if (consumivel.getQuantidade() < retirada.getQuantidade()) {
@@ -66,6 +71,8 @@ public class RetiradaService {
             case "materia-prima":
                 MateriaPrima materiaPrima = materiaPrimaRepository.findById(retirada.getItemId())
                         .orElseThrow(() -> new RuntimeException("Matéria-Prima não encontrada com id: " + retirada.getItemId()));
+
+                retirada.setItemNome(materiaPrima.getDescricao());
                 
                 // Validar se há quantidade suficiente
                 if (materiaPrima.getQuantidadeEstoque() < retirada.getQuantidade()) {
@@ -80,6 +87,8 @@ public class RetiradaService {
             case "peca":
                 Peca peca = pecaRepository.findById(retirada.getItemId())
                         .orElseThrow(() -> new RuntimeException("Peça não encontrada com id: " + retirada.getItemId()));
+
+                retirada.setItemNome(peca.getDescricao());
                 
                 // Validar se há quantidade suficiente
                 if (peca.getQuantidadeProduzida() < retirada.getQuantidade()) {
@@ -105,10 +114,19 @@ public class RetiradaService {
         // Reverter a quantidade do item ao deletar retirada
         switch (retirada.getTipoItem()) {
             case "consumivel":
-                Consumivel consumivel = consumivelRepository.findById(retirada.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Consumível não encontrado"));
-                consumivel.setQuantidade((int)(consumivel.getQuantidade() + retirada.getQuantidade().intValue()));
-                consumivelRepository.save(consumivel);
+                Consumivel consumivel = consumivelRepository.findById(retirada.getItemId()).orElse(null);
+                if (consumivel == null) {
+                    Consumivel novoConsumivel = new Consumivel();
+                    novoConsumivel.setNome(retirada.getItemNome());
+                    novoConsumivel.setPartNumber(retirada.getItemPartNumber());
+                    novoConsumivel.setFornecedor(retirada.getItemFornecedor());
+                    novoConsumivel.setLocalEstoque(retirada.getItemLocalEstoque());
+                    novoConsumivel.setQuantidade(retirada.getQuantidade().intValue());
+                    consumivelRepository.save(novoConsumivel);
+                } else {
+                    consumivel.setQuantidade((int)(consumivel.getQuantidade() + retirada.getQuantidade().intValue()));
+                    consumivelRepository.save(consumivel);
+                }
                 break;
 
             case "materia-prima":

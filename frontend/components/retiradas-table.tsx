@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search } from "lucide-react"
+import { Search, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -19,9 +20,10 @@ interface Retirada {
 
 interface RetiradasTableProps {
   retiradas: Retirada[]
+  onDelete?: (id: string) => Promise<void>
 }
 
-export function RetiradasTable({ retiradas }: RetiradasTableProps) {
+export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<"todos" | "nome" | "data">("todos")
 
@@ -83,6 +85,7 @@ export function RetiradasTable({ retiradas }: RetiradasTableProps) {
       <div className="rounded-md border border-slate-200">
         <Table>
           <TableHeader>
+              {onDelete && <TableHead className="font-semibold text-right">Ações</TableHead>}
             <TableRow className="bg-slate-50">
               <TableHead className="font-semibold">Nome do Item</TableHead>
               <TableHead className="font-semibold">Quantidade</TableHead>
@@ -96,11 +99,23 @@ export function RetiradasTable({ retiradas }: RetiradasTableProps) {
                 <TableCell className="font-medium">{retirada.item_nome}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                {onDelete && (
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => onDelete(retirada.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                )}
                     {retirada.quantidade}
                   </Badge>
                 </TableCell>
                 <TableCell>{retirada.pessoa}</TableCell>
-                <TableCell>{format(new Date(retirada.data), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                <TableCell colSpan={onDelete ? 5 : 4} className="text-center py-8 text-slate-500">
               </TableRow>
             ))}
             {filteredRetiradas.length === 0 && (

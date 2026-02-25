@@ -77,6 +77,33 @@ export default function ConsumiveisPage() {
     }
   }
 
+  const handleDeleteRetirada = async (id: string) => {
+    try {
+      const token = localStorage.getItem("jwt_token")
+
+      if (!token) {
+        throw new Error("Token não encontrado")
+      }
+
+      const response = await fetch(`http://localhost:8080/api/retiradas/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao deletar retirada")
+      }
+
+      await fetchConsumiveis()
+      await fetchRetiradas()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido"
+      setError(message)
+    }
+  }
+
   // Deletar consumível
   const handleDelete = async (id: string | number) => {
     try {
@@ -223,7 +250,7 @@ export default function ConsumiveisPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RetiradasTable retiradas={retiradas} />
+                <RetiradasTable retiradas={retiradas} onDelete={handleDeleteRetirada} />
               </CardContent>
             </Card>
           )}

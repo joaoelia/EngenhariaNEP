@@ -32,6 +32,18 @@ public class Retirada {
     @JsonProperty("item_nome")
     private String itemNome;
 
+    @Column(name = "item_part_number")
+    @JsonProperty("item_part_number")
+    private String itemPartNumber;
+
+    @Column(name = "item_fornecedor")
+    @JsonProperty("item_fornecedor")
+    private String itemFornecedor;
+
+    @Column(name = "item_local_estoque")
+    @JsonProperty("item_local_estoque")
+    private String itemLocalEstoque;
+
     @Column(nullable = false)
     private Double quantidade;
 

@@ -21,6 +21,8 @@ interface Consumivel {
   nome: string
   part_number: string
   quantidade: number
+  fornecedor: string
+  local_estoque: string
 }
 
 interface RetiradaDialogProps {
