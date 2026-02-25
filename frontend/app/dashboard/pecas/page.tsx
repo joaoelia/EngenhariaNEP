@@ -7,59 +7,9 @@ import { RetiradaDialog } from "@/components/retirada-dialog"
 import { RetiradasTable } from "@/components/retiradas-table"
 
 export default function PecasPage() {
-  const pecas = [
-    {
-      id: "1",
-      codigo_peca: "PCA-001",
-      descricao: "Suporte de Fixação Asa",
-      numero_desenho: "DWG-12345",
-      revisao: "B",
-      quantidade_produzida: 10,
-      unidade_medida: "UN",
-      data_fabricacao: "2024-03-10",
-      lote_producao: "LOT-PROD-001",
-      operador_responsavel: "João Silva",
-      maquina_utilizada: "CNC-01",
-      tempo_fabricacao_horas: 24.5,
-      status_qualidade: "Aprovada",
-      observacoes: "Peça conforme especificação",
-      created_at: "2024-03-10",
-    },
-    {
-      id: "2",
-      codigo_peca: "PCA-002",
-      descricao: "Bracket de Sustentação",
-      numero_desenho: "DWG-67890",
-      revisao: "A",
-      quantidade_produzida: 5,
-      unidade_medida: "UN",
-      data_fabricacao: "2024-03-15",
-      lote_producao: "LOT-PROD-002",
-      operador_responsavel: "Maria Santos",
-      maquina_utilizada: "CNC-02",
-      tempo_fabricacao_horas: 18.0,
-      status_qualidade: "Em_Inspecao",
-      observacoes: "Aguardando inspeção final",
-      created_at: "2024-03-15",
-    },
-  ]
+  const pecas: any[] = []
 
-  const retiradas = [
-    {
-      id: "1",
-      item_nome: "Suporte de Fixação Asa",
-      quantidade: 2,
-      pessoa: "Roberto Lima",
-      data: "2024-03-16",
-    },
-    {
-      id: "2",
-      item_nome: "Bracket de Sustentação",
-      quantidade: 1,
-      pessoa: "Fernanda Costa",
-      data: "2024-03-15",
-    },
-  ]
+  const retiradas: any[] = []
 
   return (
     <div className="space-y-6">

@@ -10,12 +10,12 @@ import { RetiradaDialog } from "@/components/retirada-dialog"
 import { RetiradasTable } from "@/components/retiradas-table"
 
 interface Consumivel {
-  id: number
+  id: string
   nome: string
-  partNumber: string
+  part_number: string
   quantidade: number
   fornecedor: string
-  localEstoque: string
+  local_estoque: string
 }
 
 export default function ConsumiveisPage() {
@@ -120,15 +120,7 @@ export default function ConsumiveisPage() {
   }
 
   // Dados mockados de retiradas (pode ser implementado depois)
-  const retiradas = [
-    {
-      id: "1",
-      item_nome: "Parafuso Allen M6x20",
-      quantidade: 50,
-      pessoa: "João Silva",
-      data: "2024-03-15",
-    },
-  ]
+  const retiradas: any[] = []
 
   useEffect(() => {
     fetchConsumiveis()

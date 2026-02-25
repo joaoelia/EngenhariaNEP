@@ -9,11 +9,13 @@
 - ✓ Visual feedback durante o carregamento
 
 ### 2. **Usuário Administrador Padrão**
-- **Email:** `admin@aviationpartsinc.com.br`
-- **Senha:** `1170Avion@#`
+- **Email:** (configurado em `APP_ADMIN_EMAIL`)
+- **Senha:** (configurada em `APP_ADMIN_PASSWORD`)
 - **Role:** ADMIN
 - ✓ Criado automaticamente na primeira execução
 - ✓ Armazenado no MySQL com hash BCrypt
+
+🔒 **SEGURANÇA**: Configure suas próprias credenciais no arquivo `.env`
 
 ### 3. **Segurança de Senhas**
 - ✓ Criptografia BCrypt (impossível recuperar)
@@ -53,10 +55,12 @@ Content-Type: application/json
 **Body (JSON):**
 ```json
 {
-  "username": "admin",
-  "password": "1170Avion@#"
+  "email": "your_configured_email",
+  "password": "your_configured_password"
 }
 ```
+
+**🔒 Use as credenciais configuradas no arquivo `.env`**
 
 **Resposta Esperada (200 OK):**
 ```json
@@ -111,20 +115,20 @@ POST http://localhost:8080/api/auth/login
 ### 3️⃣ **Teste: Verificar Senha no Banco (Segurança)**
 
 ```bash
-# Execute no terminal:
-docker exec aerogestor-mysql mysql -u root -prootpassword aerogestor \
-  -e "SELECT username, email, password FROM users WHERE username='admin';"
+# Execute no terminal (substitua as credenciais):
+docker exec aerogestor-mysql mysql -u root -p${MYSQL_ROOT_PASSWORD} aerogestor \
+  -e "SELECT username, email, password FROM users WHERE email='seu_email_configurado';"
 ```
 
 **Resposta Esperada:**
 ```
-username    email                           password
-admin       admin@aviationpartsinc.com.br   $2a$10$xxxxxxxxxxx... (HASH, não texto puro!)
+username    email                  password
+admin       seu_email_configurado  $2a$10$xxxxxxxxxxx... (HASH, não texto puro!)
 ```
 
 **Verificação:**
 - [ ] Senha começa com `$2a$10$` (BCrypt)
-- [ ] Senha NÃO é "1170Avion@#" em texto puro
+- [ ] Senha NÃO é texto puro
 - [ ] Hash é único (cada execução gera hash diferente)
 
 ---

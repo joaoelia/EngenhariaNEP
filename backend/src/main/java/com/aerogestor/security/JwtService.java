@@ -72,12 +72,8 @@ public class JwtService {
     }
 
     private Key getSigningKey() {
-        byte[] keyBytes;
-        try {
-            keyBytes = Decoders.BASE64.decode(jwtSecret);
-        } catch (IllegalArgumentException ex) {
-            keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        }
+        // Use the secret key directly as UTF-8 bytes instead of trying to decode as Base64
+        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

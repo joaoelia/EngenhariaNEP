@@ -32,7 +32,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: usuario,
+          email: usuario,
           password: senha,
         }),
       });
@@ -44,7 +44,7 @@ export default function LoginPage() {
       const data = await response.json();
       
       // Salvar token no localStorage
-      localStorage.setItem("jwt_token", data.token);
+      localStorage.setItem("jwt_token", data.accessToken);
       localStorage.setItem("user", JSON.stringify(data));
       
       // Redirecionar para dashboard

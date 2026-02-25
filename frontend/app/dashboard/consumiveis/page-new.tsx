@@ -10,12 +10,12 @@ import { RetiradaDialog } from "@/components/retirada-dialog"
 import { RetiradasTable } from "@/components/retiradas-table"
 
 interface Consumivel {
-  id: number
+  id: string
   nome: string
-  partNumber: string
+  part_number: string
   quantidade: number
   fornecedor: string
-  localEstoque: string
+  local_estoque: string
 }
 
 export default function ConsumiveisPage() {

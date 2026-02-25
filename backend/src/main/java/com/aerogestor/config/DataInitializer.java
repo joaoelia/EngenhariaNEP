@@ -21,9 +21,14 @@ public class DataInitializer {
                                     PasswordEncoder passwordEncoder,
                                     Environment env) {
         return args -> {
-            // Buscar credenciais admin das variáveis de ambiente
-            String adminEmail = env.getProperty("APP_ADMIN_EMAIL", "admin@aviationpartsinc.com.br");
-            String adminPassword = env.getProperty("APP_ADMIN_PASSWORD", "1170Avion@#");
+            // Buscar credenciais admin das variáveis de ambiente (obrigatórias)
+            String adminEmail = env.getProperty("APP_ADMIN_EMAIL");
+            String adminPassword = env.getProperty("APP_ADMIN_PASSWORD");
+            
+            if (adminEmail == null || adminPassword == null) {
+                log.error("✗ ERRO: Variáveis APP_ADMIN_EMAIL e APP_ADMIN_PASSWORD devem ser definidas!");
+                return;
+            }
             
             // Verificar se o usuário admin já existe
             if (userRepository.findByEmail(adminEmail).isEmpty()) {

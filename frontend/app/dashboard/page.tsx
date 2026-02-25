@@ -16,28 +16,28 @@ export default function DashboardPage() {
   const stats = [
     {
       title: "Consumíveis",
-      count: 12,
+      count: 0,
       icon: Package,
       href: "/dashboard/consumiveis",
       color: "bg-blue-500",
     },
     {
       title: "Matéria-Prima",
-      count: 8,
+      count: 0,
       icon: Box,
       href: "/dashboard/materia-prima",
       color: "bg-green-500",
     },
     {
       title: "Peças Fabricadas",
-      count: 24,
+      count: 0,
       icon: Wrench,
       href: "/dashboard/pecas",
       color: "bg-orange-500",
     },
     {
       title: "Ordens",
-      count: 15,
+      count: 0,
       icon: ClipboardList,
       href: "/dashboard/ordens",
       color: "bg-purple-500",

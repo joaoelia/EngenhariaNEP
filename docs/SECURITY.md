@@ -18,11 +18,13 @@ String hashedPassword = passwordEncoder.encode(plainPassword);
 
 O sistema cria automaticamente um usuário administrador na primeira inicialização:
 
-- **Email:** `admin@aviationpartsinc.com.br`
-- **Senha:** `1170Avion@#`
-- **Função:** ADMIN
+⚠️ **IMPORTANTE**: As credenciais devem ser configuradas via variáveis de ambiente:
+- `APP_ADMIN_EMAIL`: Email do administrador
+- `APP_ADMIN_PASSWORD`: Senha forte do administrador
 
-⚠️ **IMPORTANTE:** A senha é armazenada com hash BCrypt no banco de dados, não em texto puro.
+**A senha é sempre armazenada com hash BCrypt no banco de dados, nunca em texto puro.**
+
+🔒 **Nunca compartilhe suas credenciais ou as commitê no repositório Git!**
 
 ## 2. Proteção Contra Invasões
 
@@ -100,7 +102,7 @@ application-prod.properties
 
 1. **Senha no banco de dados:**
 ```sql
-SELECT password FROM users WHERE email = 'admin@aviationpartsinc.com.br';
+SELECT password FROM users WHERE email = 'seu_email_configurado';
 -- Deve retornar algo como: $2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 -- NUNCA a senha em texto puro
 ```
@@ -113,10 +115,10 @@ docker exec aerogestor-backend env | grep APP_ADMIN
 
 3. **Teste de autenticação:**
 ```bash
-# Login deve funcionar com as credenciais
+# Login deve funcionar com as credenciais configuradas
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin", "password":"1170Avion@#"}'
+  -d '{"email":"seu_email", "password":"sua_senha"}'
 ```
 
 ## 6. Persistência de Dados
