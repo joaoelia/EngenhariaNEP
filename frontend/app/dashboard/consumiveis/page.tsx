@@ -20,6 +20,7 @@ interface Consumivel {
 
 export default function ConsumiveisPage() {
   const [consumiveis, setConsumiveis] = useState<Consumivel[]>([])
+  const [retiradas, setRetiradas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,10 +48,32 @@ export default function ConsumiveisPage() {
 
       const data = await response.json()
       setConsumiveis(Array.isArray(data) ? data : [])
+      
+      // Buscar retiradas
+      fetchRetiradas()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchRetiradas = async () => {
+    try {
+      const token = localStorage.getItem("jwt_token")
+      if (!token) return
+
+      const response = await fetch("http://localhost:8080/api/retiradas/tipo/consumivel", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) throw new Error("Erro ao carregar retiradas")
+      const data = await response.json()
+      setRetiradas(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error("Erro ao buscar retiradas:", err)
     }
   }
 
@@ -120,8 +143,6 @@ export default function ConsumiveisPage() {
   }
 
   // Dados mockados de retiradas
-  const retiradas: any[] = []
-
   useEffect(() => {
     fetchConsumiveis()
   }, [])
@@ -138,7 +159,7 @@ export default function ConsumiveisPage() {
         </div>
         <div className="flex gap-3">
           {consumiveis.length > 0 && (
-            <RetiradaDialog consumiveis={consumiveis}>
+            <RetiradaDialog consumiveis={consumiveis} onRetiradaAdded={fetchConsumiveis}>
               <Button className="bg-green-600 hover:bg-green-700">
                 <ArrowDownToLine className="h-4 w-4 mr-2" />
                 Retirada

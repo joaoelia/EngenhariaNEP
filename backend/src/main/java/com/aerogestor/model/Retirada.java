@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,12 +21,15 @@ public class Retirada {
     private Long id;
 
     @Column(name = "tipo_item", nullable = false)
+    @JsonProperty("tipo_item")
     private String tipoItem; // consumivel, materia-prima, peca
 
     @Column(name = "item_id", nullable = false)
+    @JsonProperty("item_id")
     private Long itemId;
 
     @Column(name = "item_nome", nullable = false)
+    @JsonProperty("item_nome")
     private String itemNome;
 
     @Column(nullable = false)
@@ -41,6 +45,7 @@ public class Retirada {
     private String observacoes;
 
     @Column(name = "created_at", updatable = false)
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
