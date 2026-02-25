@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Consumivel {
-  id: string
+  id: number
   nome: string
   part_number: string
   quantidade: number
@@ -102,7 +102,7 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
         body: JSON.stringify({
           tipo_item: getTipoItemAPI(),
           item_id: parseInt(formData.itemId),
-          item_nome: consumiveis.find((c) => c.id === formData.itemId)?.nome || "",
+          item_nome: consumiveis.find((c) => String(c.id) === formData.itemId)?.nome || "",
           quantidade: parseFloat(formData.quantidade),
           pessoa: formData.pessoa,
           data: formData.data,
@@ -158,7 +158,7 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
               </SelectTrigger>
               <SelectContent>
                 {consumiveis.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
+                  <SelectItem key={item.id} value={String(item.id)}>
                     {item.nome} - {item.part_number} (Disponível: {item.quantidade})
                   </SelectItem>
                 ))}
@@ -211,16 +211,6 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="bg-green-600 hover:bg-green-700 flex-1" disabled={isLoading}>
               {isLoading ? "Registrando..." : "Registrar Retirada"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
               Cancelar

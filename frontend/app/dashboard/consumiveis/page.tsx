@@ -12,10 +12,10 @@ import { RetiradasTable } from "@/components/retiradas-table"
 interface Consumivel {
   id: number
   nome: string
-  partNumber: string
+  part_number: string
   quantidade: number
   fornecedor: string
-  localEstoque: string
+  local_estoque: string
 }
 
 export default function ConsumiveisPage() {

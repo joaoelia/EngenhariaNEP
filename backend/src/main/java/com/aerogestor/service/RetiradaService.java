@@ -54,8 +54,13 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                consumivel.setQuantidade((int)(consumivel.getQuantidade() - retirada.getQuantidade().intValue()));
-                consumivelRepository.save(consumivel);
+                int novaQuantidade = consumivel.getQuantidade() - retirada.getQuantidade().intValue();
+                if (novaQuantidade <= 0) {
+                    consumivelRepository.deleteById(consumivel.getId());
+                } else {
+                    consumivel.setQuantidade(novaQuantidade);
+                    consumivelRepository.save(consumivel);
+                }
                 break;
 
             case "materia-prima":
