@@ -34,8 +34,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/aerogestor?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: rootpassword
-      APP_JWT_SECRET: change-me-to-a-long-secret-key-please-32-bytes-min
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-aerogestor-super-secret-key-change-in-production-min-32-bytes-required}
       APP_JWT_EXPIRATION_MS: 86400000
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@aviationpartsinc.com.br}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-1170Avion@#}
       APP_CORS_ALLOWED_ORIGINS: http://localhost:3000
       SPRING_JPA_SHOW_SQL: "false"
     networks:
