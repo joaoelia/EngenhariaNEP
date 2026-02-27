@@ -9,6 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { DeleteDialog } from "@/components/delete-dialog"
+
+// Função para formatar data sem ajuste de timezone (para datas que vêm do backend)
+const formatDateWithoutAdjustment = (dateString?: string) => {
+  if (!dateString) return "-"
+  const dateParts = dateString.split("-")
+  const dateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+  return format(dateObj, "dd/MM/yyyy", { locale: ptBR })
+}
 
 interface Retirada {
   id: string
@@ -26,6 +35,7 @@ interface RetiradasTableProps {
 export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<"todos" | "nome" | "data">("todos")
+  const [deleteItem, setDeleteItem] = useState<Retirada | null>(null)
 
   const filteredRetiradas = retiradas.filter((retirada) => {
     if (!searchTerm) return true
@@ -37,11 +47,11 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
         retirada.item_nome.toLowerCase().includes(searchLower) || retirada.pessoa.toLowerCase().includes(searchLower)
       )
     } else if (filterType === "data") {
-      const formattedDate = format(new Date(retirada.data), "dd/MM/yyyy", { locale: ptBR })
+      const formattedDate = formatDateWithoutAdjustment(retirada.data)
       return formattedDate.includes(searchTerm)
     } else {
       // todos - search in all fields
-      const formattedDate = format(new Date(retirada.data), "dd/MM/yyyy", { locale: ptBR })
+      const formattedDate = formatDateWithoutAdjustment(retirada.data)
       return (
         retirada.item_nome.toLowerCase().includes(searchLower) ||
         retirada.pessoa.toLowerCase().includes(searchLower) ||
@@ -85,12 +95,12 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
       <div className="rounded-md border border-slate-200">
         <Table>
           <TableHeader>
-              {onDelete && <TableHead className="font-semibold text-right">Ações</TableHead>}
             <TableRow className="bg-slate-50">
               <TableHead className="font-semibold">Nome do Item</TableHead>
               <TableHead className="font-semibold">Quantidade</TableHead>
               <TableHead className="font-semibold">Pessoa que Retirou</TableHead>
               <TableHead className="font-semibold">Data</TableHead>
+              {onDelete && <TableHead className="font-semibold text-right">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -99,28 +109,28 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
                 <TableCell className="font-medium">{retirada.item_nome}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    {retirada.quantidade}
+                  </Badge>
+                </TableCell>
+                <TableCell>{retirada.pessoa}</TableCell>
+                <TableCell>{formatDateWithoutAdjustment(retirada.data)}</TableCell>
                 {onDelete && (
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => onDelete(retirada.id)}
+                      onClick={() => setDeleteItem(retirada)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 )}
-                    {retirada.quantidade}
-                  </Badge>
-                </TableCell>
-                <TableCell>{retirada.pessoa}</TableCell>
-                <TableCell colSpan={onDelete ? 5 : 4} className="text-center py-8 text-slate-500">
               </TableRow>
             ))}
             {filteredRetiradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={onDelete ? 5 : 4} className="text-center py-8 text-slate-500">
                   Nenhuma retirada encontrada com "{searchTerm}"
                 </TableCell>
               </TableRow>
@@ -128,6 +138,22 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {deleteItem && (
+        <DeleteDialog
+          open={!!deleteItem}
+          onOpenChange={() => setDeleteItem(null)}
+          title="Excluir Retirada"
+          description="Tem certeza que deseja excluir esta retirada?"
+          itemName={deleteItem.item_nome}
+          onConfirm={async () => {
+            if (onDelete) {
+              await onDelete(deleteItem.id)
+            }
+            setDeleteItem(null)
+          }}
+        />
+      )}
     </div>
   )
 }

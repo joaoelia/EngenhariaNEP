@@ -1,42 +1,97 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, Pencil, Trash2 } from "lucide-react"
+import { Eye, Pencil, Trash2, Download } from "lucide-react"
 import Link from "next/link"
 import { ViewDialog } from "@/components/view-dialog"
-import { EditDialog } from "@/components/edit-dialog"
 import { DeleteDialog } from "@/components/delete-dialog"
 
 interface Ordem {
-  id: string
+  id: number
   numero_ordem: string
   tipo_ordem: string
   projeto: string
-  partNumber: string
+  part_number: string
   status: string
   data_criacao: string
+  arquivo_pdf?: string
+  dados_formulario?: string
 }
 
 interface OrdensTableProps {
   ordens: Ordem[]
+  onUpdate: () => void
 }
 
-export function OrdensTable({ ordens }: OrdensTableProps) {
+export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
+  const router = useRouter()
   const [viewItem, setViewItem] = useState<Ordem | null>(null)
-  const [editItem, setEditItem] = useState<Ordem | null>(null)
   const [deleteItem, setDeleteItem] = useState<Ordem | null>(null)
 
-  const handleSaveEdit = async (data: Record<string, any>) => {
-    console.log("Salvando:", data)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  const handleDownloadPDF = async (ordem: Ordem) => {
+    if (!ordem.arquivo_pdf) {
+      alert("PDF não disponível")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8080/uploads/${ordem.arquivo_pdf}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao baixar PDF")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${ordem.numero_ordem}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error("Erro ao baixar PDF:", error)
+      alert("Erro ao baixar PDF")
+    }
   }
 
   const handleDelete = async () => {
-    console.log("Excluindo:", deleteItem?.id)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!deleteItem) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://localhost:8080/api/ordens/${deleteItem.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.status === 401) {
+        router.push("/login")
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error("Erro ao excluir ordem")
+      }
+
+      setDeleteItem(null)
+      onUpdate()
+    } catch (error) {
+      console.error("Erro ao excluir ordem:", error)
+      alert("Erro ao excluir ordem")
+    }
   }
 
   if (ordens.length === 0) {
@@ -69,8 +124,10 @@ export function OrdensTable({ ordens }: OrdensTableProps) {
 
   const getTipoColor = (tipo: string) => {
     switch (tipo.toLowerCase()) {
+      case "fabricacao":
       case "fabricação":
         return "bg-blue-100 text-blue-800 border-blue-200"
+      case "producao":
       case "produção":
         return "bg-purple-100 text-purple-800 border-purple-200"
       case "projeto":
@@ -78,6 +135,13 @@ export function OrdensTable({ ordens }: OrdensTableProps) {
       default:
         return "bg-slate-100 text-slate-800 border-slate-200"
     }
+  }
+
+  const formatTipoDisplay = (tipo: string) => {
+    if (tipo === "fabricacao") return "Fabricação"
+    if (tipo === "producao") return "Produção"
+    if (tipo === "projeto") return "Projeto"
+    return tipo
   }
 
   return (
@@ -99,10 +163,10 @@ export function OrdensTable({ ordens }: OrdensTableProps) {
             <TableRow key={item.id} className="hover:bg-slate-50">
               <TableCell className="font-mono text-sm font-semibold">{item.numero_ordem}</TableCell>
               <TableCell>
-                <Badge className={getTipoColor(item.tipo_ordem)}>{item.tipo_ordem}</Badge>
+                <Badge className={getTipoColor(item.tipo_ordem)}>{formatTipoDisplay(item.tipo_ordem)}</Badge>
               </TableCell>
               <TableCell className="max-w-xs truncate font-medium">{item.projeto}</TableCell>
-              <TableCell className="font-mono text-sm">{item.partNumber}</TableCell>
+              <TableCell className="font-mono text-sm">{item.part_number}</TableCell>
               <TableCell>{new Date(item.data_criacao).toLocaleDateString("pt-BR")}</TableCell>
               <TableCell>
                 <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
@@ -112,9 +176,17 @@ export function OrdensTable({ ordens }: OrdensTableProps) {
                   <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setViewItem(item)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setEditItem(item)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {item.arquivo_pdf && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="cursor-pointer text-blue-600 hover:text-blue-700"
+                      onClick={() => handleDownloadPDF(item)}
+                      title="Baixar PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -136,64 +208,44 @@ export function OrdensTable({ ordens }: OrdensTableProps) {
           open={!!viewItem}
           onOpenChange={() => setViewItem(null)}
           title="Detalhes da Ordem"
-          data={viewItem}
+          data={{
+            ...viewItem,
+            tipo_ordem_display: formatTipoDisplay(viewItem.tipo_ordem),
+          }}
           fields={[
             { key: "numero_ordem", label: "Número" },
             {
-              key: "tipo_ordem",
+              key: "tipo_ordem_display",
               label: "Tipo",
               render: (value) => <Badge>{value}</Badge>,
             },
             { key: "projeto", label: "Projeto" },
-            { key: "partNumber", label: "Part Number" },
+            { key: "part_number", label: "Part Number" },
             { key: "data_criacao", label: "Data de Criação", type: "date" },
             {
               key: "status",
               label: "Status",
               render: (value) => <Badge>{value}</Badge>,
             },
-          ]}
-        />
-      )}
-
-      {/* Edit Dialog */}
-      {editItem && (
-        <EditDialog
-          open={!!editItem}
-          onOpenChange={() => setEditItem(null)}
-          title="Editar Ordem"
-          data={editItem}
-          fields={[
-            { key: "numero_ordem", label: "Número", required: true, disabled: true },
             {
-              key: "tipo_ordem",
-              label: "Tipo",
-              type: "select",
-              required: true,
-              options: [
-                { value: "Fabricação", label: "Fabricação" },
-                { value: "Produção", label: "Produção" },
-                { value: "Projeto", label: "Projeto" },
-              ],
-            },
-            { key: "projeto", label: "Projeto", required: true },
-            { key: "partNumber", label: "Part Number", required: true },
-            { key: "data_criacao", label: "Data de Criação", type: "date", required: true },
-            {
-              key: "status",
-              label: "Status",
-              type: "select",
-              required: true,
-              options: [
-                { value: "Aberta", label: "Aberta" },
-                { value: "Em Andamento", label: "Em Andamento" },
-                { value: "Pausada", label: "Pausada" },
-                { value: "Concluída", label: "Concluída" },
-                { value: "Cancelada", label: "Cancelada" },
-              ],
+              key: "arquivo_pdf",
+              label: "PDF",
+              render: (value) =>
+                value ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700"
+                    onClick={() => handleDownloadPDF(viewItem)}
+                  >
+                    <Download className="h-3 w-3 mr-2" />
+                    Baixar PDF
+                  </Button>
+                ) : (
+                  <span className="text-slate-500">Não disponível</span>
+                ),
             },
           ]}
-          onSave={handleSaveEdit}
         />
       )}
 

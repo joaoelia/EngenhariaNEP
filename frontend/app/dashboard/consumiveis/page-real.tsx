@@ -10,7 +10,7 @@ import { RetiradaDialog } from "@/components/retirada-dialog"
 import { RetiradasTable } from "@/components/retiradas-table"
 
 interface Consumivel {
-  id: string
+  id: number
   nome: string
   part_number: string
   quantidade: number
@@ -55,7 +55,7 @@ export default function ConsumiveisPage() {
   }
 
   // Deletar consumível
-  const handleDelete = async (id: string | number) => {
+  const handleDelete = async (id: number) => {
     try {
       const token = localStorage.getItem("jwt_token")
 
@@ -83,7 +83,7 @@ export default function ConsumiveisPage() {
   }
 
   // Editar consumível
-  const handleEdit = async (id: string | number, data: Record<string, any>) => {
+  const handleEdit = async (id: number, data: Record<string, any>) => {
     try {
       const token = localStorage.getItem("jwt_token")
 

@@ -1,11 +1,58 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Plus, ClipboardList } from "lucide-react"
 import { OrdensTable } from "@/components/ordens-table"
 
+interface Ordem {
+  id: number
+  numero_ordem: string
+  tipo_ordem: string
+  projeto: string
+  part_number: string
+  status: string
+  data_criacao: string
+  arquivo_pdf?: string
+  dados_formulario?: string
+}
+
 export default function OrdensPage() {
-  const ordens: any[] = []
+  const router = useRouter()
+  const [ordens, setOrdens] = useState<Ordem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchOrdens()
+  }, [])
+
+  const fetchOrdens = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("http://localhost:8080/api/ordens", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.status === 401) {
+        router.push("/login")
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        setOrdens(data)
+      }
+    } catch (error) {
+      console.error("Erro ao buscar ordens:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -29,11 +76,11 @@ export default function OrdensPage() {
         <CardHeader>
           <CardTitle>Lista de Ordens</CardTitle>
           <CardDescription>
-            {ordens.length} {ordens.length === 1 ? "ordem cadastrada" : "ordens cadastradas"}
+            {loading ? "Carregando..." : `${ordens.length} ${ordens.length === 1 ? "ordem cadastrada" : "ordens cadastradas"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OrdensTable ordens={ordens} />
+          <OrdensTable ordens={ordens} onUpdate={fetchOrdens} />
         </CardContent>
       </Card>
     </div>

@@ -34,6 +34,12 @@ public class MateriaPrima {
 
     private String especificacao;
 
+    private Double altura;
+
+    private Double largura;
+
+    private Double espessura;
+
     @Column(name = "quantidade_estoque", nullable = false)
     @JsonProperty("quantidade_estoque")
     private Double quantidadeEstoque;
@@ -54,6 +60,25 @@ public class MateriaPrima {
     @Column(name = "certificado_qualidade")
     @JsonProperty("certificado_qualidade")
     private String certificadoQualidade;
+
+    @Column(name = "cert_composicao")
+    @JsonProperty("cert_composicao")
+    private String certComposicao;
+
+    @Column(name = "relatorio_propriedades")
+    @JsonProperty("relatorio_propriedades")
+    private String relatorioPropriedades;
+
+    @Column(name = "laudo_penetrante")
+    @JsonProperty("laudo_penetrante")
+    private String laudoPenetrante;
+
+    @Column(name = "nota_fiscal")
+    @JsonProperty("nota_fiscal")
+    private String notaFiscal;
+
+    @Column(columnDefinition = "JSON")
+    private String imagens;
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;

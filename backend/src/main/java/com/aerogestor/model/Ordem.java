@@ -52,6 +52,14 @@ public class Ordem {
     @Column(columnDefinition = "TEXT")
     private String observacoes;
 
+    @Column(name = "arquivo_pdf")
+    @JsonProperty("arquivo_pdf")
+    private String arquivoPdf;
+
+    @Column(name = "dados_formulario", columnDefinition = "JSON")
+    @JsonProperty("dados_formulario")
+    private String dadosFormulario;
+
     @Column(name = "created_at", updatable = false)
     @JsonProperty("created_at")
     private LocalDateTime createdAt;

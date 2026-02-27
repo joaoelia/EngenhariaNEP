@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +30,8 @@ interface OrdemFabricacaoData {
 }
 
 export function OrdemFabricacaoForm() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<OrdemFabricacaoData>({
     projeto: "",
     partNumber: "",
@@ -55,7 +58,7 @@ export function OrdemFabricacaoForm() {
     })
   }
 
-  const gerarPDF = () => {
+  const gerarPDF = async () => {
     const doc = new jsPDF()
     const hoje = new Date().toLocaleDateString("pt-BR")
 
@@ -158,8 +161,48 @@ export function OrdemFabricacaoForm() {
     doc.setFontSize(8)
     doc.text("Nep Aviation Com. Imp. Exp. Ltda – Documento externo de controle de produção", 10, 285)
 
-    // Salvar PDF
-    doc.save(`Ordem-Fabricacao-${formData.partNumber || "documento"}.pdf`)
+    // Convert PDF to Blob
+    const pdfBlob = doc.output("blob")
+    
+    // Upload to backend
+    try {
+      setLoading(true)
+      
+      const formDataToSend = new FormData()
+      formDataToSend.append("tipo_ordem", "fabricacao")
+      formDataToSend.append("projeto", formData.projeto)
+      formDataToSend.append("part_number", formData.partNumber)
+      formDataToSend.append("status", "Em Andamento")
+      formDataToSend.append("dados_formulario", JSON.stringify(formData))
+      formDataToSend.append("arquivo_pdf", pdfBlob, `OF-${formData.partNumber}.pdf`)
+
+      const token = localStorage.getItem("token")
+      const response = await fetch("http://localhost:8080/api/ordens", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataToSend,
+      })
+
+      if (response.status === 401) {
+        alert("Sessão expirada. Por favor, faça login novamente.")
+        router.push("/login")
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error("Erro ao salvar ordem")
+      }
+
+      alert("Ordem de fabricação criada com sucesso!")
+      router.push("/dashboard/ordens")
+    } catch (error) {
+      console.error("Erro ao salvar ordem:", error)
+      alert("Erro ao salvar ordem. Tente novamente.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -386,9 +429,14 @@ export function OrdemFabricacaoForm() {
           </div>
 
           <div className="flex gap-4">
-            <Button type="button" onClick={gerarPDF} className="bg-purple-600 hover:bg-purple-700">
+            <Button 
+              type="button" 
+              onClick={gerarPDF} 
+              className="bg-purple-600 hover:bg-purple-700"
+              disabled={loading}
+            >
               <Download className="h-4 w-4 mr-2" />
-              Gerar PDF
+              {loading ? "Salvando..." : "Gerar e Salvar PDF"}
             </Button>
           </div>
         </form>

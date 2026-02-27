@@ -12,7 +12,7 @@ import { EditDialog } from "@/components/edit-dialog"
 import { DeleteDialog } from "@/components/delete-dialog"
 
 interface Consumivel {
-  id: string
+  id: number
   nome: string
   part_number: string
   quantidade: number
@@ -22,8 +22,8 @@ interface Consumivel {
 
 interface ConsumiveisTableProps {
   consumiveis: Consumivel[]
-  onDelete?: (id: string) => Promise<void>
-  onEdit?: (id: string, data: Record<string, any>) => Promise<void>
+  onDelete?: (id: number) => Promise<void>
+  onEdit?: (id: number, data: Record<string, any>) => Promise<void>
 }
 
 export function ConsumiveisTable({ consumiveis, onDelete, onEdit }: ConsumiveisTableProps) {

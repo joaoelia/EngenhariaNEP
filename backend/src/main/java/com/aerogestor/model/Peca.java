@@ -31,6 +31,14 @@ public class Peca {
     @JsonProperty("numero_desenho")
     private String numeroDesenho;
 
+    @Column(name = "numero_serie")
+    @JsonProperty("numero_serie")
+    private String numeroSerie;
+
+    @Column(name = "aeronave_instalada")
+    @JsonProperty("aeronave_instalada")
+    private String aeronaveInstalada;
+
     private String revisao;
 
     @Column(name = "quantidade_produzida", nullable = false)
@@ -64,6 +72,14 @@ public class Peca {
     @Column(name = "status_qualidade", nullable = false)
     @JsonProperty("status_qualidade")
     private String statusQualidade;
+
+    @Column(name = "relatorio_inspecao")
+    @JsonProperty("relatorio_inspecao")
+    private String relatorioInspecao;
+
+    @Column(name = "fotos", columnDefinition = "JSON")
+    @JsonProperty("fotos")
+    private String fotos;
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;

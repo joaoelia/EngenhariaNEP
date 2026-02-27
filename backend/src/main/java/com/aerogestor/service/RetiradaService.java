@@ -73,6 +73,20 @@ public class RetiradaService {
                         .orElseThrow(() -> new RuntimeException("Matéria-Prima não encontrada com id: " + retirada.getItemId()));
 
                 retirada.setItemNome(materiaPrima.getDescricao());
+                retirada.setItemPartNumber(materiaPrima.getCodigo());
+                retirada.setItemFornecedor(materiaPrima.getFornecedor());
+                retirada.setItemLote(materiaPrima.getLote());
+                retirada.setItemDataEntrada(materiaPrima.getDataEntrada());
+                retirada.setItemAltura(materiaPrima.getAltura());
+                retirada.setItemLargura(materiaPrima.getLargura());
+                retirada.setItemEspessura(materiaPrima.getEspessura());
+                retirada.setItemEspecificacao(materiaPrima.getEspecificacao());
+                retirada.setItemUnidadeMedida(materiaPrima.getUnidadeMedida());
+                retirada.setItemNotaFiscal(materiaPrima.getNotaFiscal());
+                retirada.setItemCertComposicao(materiaPrima.getCertComposicao());
+                retirada.setItemRelatorioPropriedades(materiaPrima.getRelatorioPropriedades());
+                retirada.setItemLaudoPenetrante(materiaPrima.getLaudoPenetrante());
+                retirada.setItemImagens(materiaPrima.getImagens());
                 
                 // Validar se há quantidade suficiente
                 if (materiaPrima.getQuantidadeEstoque() < retirada.getQuantidade()) {
@@ -80,8 +94,13 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                materiaPrima.setQuantidadeEstoque(materiaPrima.getQuantidadeEstoque() - retirada.getQuantidade());
-                materiaPrimaRepository.save(materiaPrima);
+                double novaQuantidadeMp = materiaPrima.getQuantidadeEstoque() - retirada.getQuantidade();
+                if (novaQuantidadeMp <= 0) {
+                    materiaPrimaRepository.deleteById(materiaPrima.getId());
+                } else {
+                    materiaPrima.setQuantidadeEstoque(novaQuantidadeMp);
+                    materiaPrimaRepository.save(materiaPrima);
+                }
                 break;
 
             case "peca":
@@ -89,6 +108,13 @@ public class RetiradaService {
                         .orElseThrow(() -> new RuntimeException("Peça não encontrada com id: " + retirada.getItemId()));
 
                 retirada.setItemNome(peca.getDescricao());
+                retirada.setItemPartNumber(peca.getCodigoPeca());
+                retirada.setItemLote(peca.getNumeroSerie());
+                retirada.setItemUnidadeMedida(peca.getUnidadeMedida());
+                retirada.setItemLocalEstoque(peca.getAeronaveInstalada());
+                retirada.setItemCertComposicao(peca.getRelatorioInspecao());
+                retirada.setItemImagens(peca.getFotos());
+                retirada.setItemEspecificacao(peca.getStatusQualidade());
                 
                 // Validar se há quantidade suficiente
                 if (peca.getQuantidadeProduzida() < retirada.getQuantidade()) {
@@ -96,8 +122,13 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                peca.setQuantidadeProduzida((int)(peca.getQuantidadeProduzida() - retirada.getQuantidade().intValue()));
-                pecaRepository.save(peca);
+                int novaQuantidadePeca = (int) (peca.getQuantidadeProduzida() - retirada.getQuantidade().intValue());
+                if (novaQuantidadePeca <= 0) {
+                    pecaRepository.deleteById(peca.getId());
+                } else {
+                    peca.setQuantidadeProduzida(novaQuantidadePeca);
+                    pecaRepository.save(peca);
+                }
                 break;
 
             default:
@@ -130,17 +161,64 @@ public class RetiradaService {
                 break;
 
             case "materia-prima":
-                MateriaPrima materiaPrima = materiaPrimaRepository.findById(retirada.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Matéria-Prima não encontrada"));
-                materiaPrima.setQuantidadeEstoque(materiaPrima.getQuantidadeEstoque() + retirada.getQuantidade());
-                materiaPrimaRepository.save(materiaPrima);
+                MateriaPrima materiaPrima = materiaPrimaRepository.findById(retirada.getItemId()).orElse(null);
+                if (materiaPrima == null) {
+                    MateriaPrima novaMateriaPrima = new MateriaPrima();
+                    String codigo = retirada.getItemPartNumber() != null && !retirada.getItemPartNumber().isBlank()
+                            ? retirada.getItemPartNumber()
+                            : "MP-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    novaMateriaPrima.setCodigo(codigo);
+                    novaMateriaPrima.setDescricao(retirada.getItemNome());
+                    novaMateriaPrima.setTipoMaterial(retirada.getItemNome());
+                    novaMateriaPrima.setQuantidadeEstoque(retirada.getQuantidade());
+                    novaMateriaPrima.setUnidadeMedida(retirada.getItemUnidadeMedida() != null ? retirada.getItemUnidadeMedida() : "peças");
+                    novaMateriaPrima.setFornecedor(retirada.getItemFornecedor() != null ? retirada.getItemFornecedor() : "Desconhecido");
+                    novaMateriaPrima.setLote(retirada.getItemLote());
+                    novaMateriaPrima.setDataEntrada(retirada.getItemDataEntrada());
+                    novaMateriaPrima.setAltura(retirada.getItemAltura());
+                    novaMateriaPrima.setLargura(retirada.getItemLargura());
+                    novaMateriaPrima.setEspessura(retirada.getItemEspessura());
+                    novaMateriaPrima.setEspecificacao(retirada.getItemEspecificacao());
+                    novaMateriaPrima.setCertComposicao(retirada.getItemCertComposicao());
+                    novaMateriaPrima.setRelatorioPropriedades(retirada.getItemRelatorioPropriedades());
+                    novaMateriaPrima.setLaudoPenetrante(retirada.getItemLaudoPenetrante());
+                    novaMateriaPrima.setImagens(retirada.getItemImagens());
+                    novaMateriaPrima.setNotaFiscal(retirada.getItemNotaFiscal() != null ? retirada.getItemNotaFiscal() : "restaurado");
+                    materiaPrimaRepository.save(novaMateriaPrima);
+                } else {
+                    materiaPrima.setQuantidadeEstoque(materiaPrima.getQuantidadeEstoque() + retirada.getQuantidade());
+                    materiaPrimaRepository.save(materiaPrima);
+                }
                 break;
 
             case "peca":
-                Peca peca = pecaRepository.findById(retirada.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Peça não encontrada"));
-                peca.setQuantidadeProduzida((int)(peca.getQuantidadeProduzida() + retirada.getQuantidade().intValue()));
-                pecaRepository.save(peca);
+                Peca peca = pecaRepository.findById(retirada.getItemId()).orElse(null);
+                if (peca == null) {
+                    Peca novaPeca = new Peca();
+                    String codigo = retirada.getItemPartNumber() != null && !retirada.getItemPartNumber().isBlank()
+                            ? retirada.getItemPartNumber()
+                            : "PC-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                    String numeroSerie = retirada.getItemLote() != null && !retirada.getItemLote().isBlank()
+                        ? retirada.getItemLote()
+                        : codigo;
+                    novaPeca.setCodigoPeca(codigo);
+                    novaPeca.setDescricao(retirada.getItemNome());
+                    novaPeca.setNumeroSerie(numeroSerie);
+                    novaPeca.setNumeroDesenho(numeroSerie);
+                    novaPeca.setQuantidadeProduzida(retirada.getQuantidade().intValue());
+                    novaPeca.setUnidadeMedida(retirada.getItemUnidadeMedida() != null ? retirada.getItemUnidadeMedida() : "un");
+                    novaPeca.setDataFabricacao(retirada.getData());
+                    novaPeca.setStatusQualidade(retirada.getItemEspecificacao() != null && !retirada.getItemEspecificacao().isBlank() 
+                            ? retirada.getItemEspecificacao() 
+                            : "Em_Inspecao");
+                    novaPeca.setAeronaveInstalada(retirada.getItemLocalEstoque());
+                    novaPeca.setRelatorioInspecao(retirada.getItemCertComposicao());
+                    novaPeca.setFotos(retirada.getItemImagens());
+                    pecaRepository.save(novaPeca);
+                } else {
+                    peca.setQuantidadeProduzida((int) (peca.getQuantidadeProduzida() + retirada.getQuantidade().intValue()));
+                    pecaRepository.save(peca);
+                }
                 break;
         }
         

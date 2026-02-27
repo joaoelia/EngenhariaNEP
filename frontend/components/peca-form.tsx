@@ -10,8 +10,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X } from "lucide-react"
 
-export function PecaForm() {
+interface PecaFormProps {
+  initialData?: {
+    id: string
+    codigo_peca: string
+    descricao: string
+    numero_serie?: string
+    numero_desenho: string
+    aeronave_instalada?: string
+    relatorio_inspecao?: string
+    fotos?: string
+  }
+}
+
+export function PecaForm({ initialData }: PecaFormProps) {
   const router = useRouter()
+  const isEditing = !!initialData
   const [isLoading, setIsLoading] = useState(false)
   const [relatorioInspecao, setRelatorioInspecao] = useState<File | null>(null)
   const [fotos, setFotos] = useState<File[]>([])
@@ -20,10 +34,62 @@ export function PecaForm() {
     e.preventDefault()
     setIsLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const formElement = e.currentTarget
+      const codigoPeca = (formElement.querySelector("#partnumber") as HTMLInputElement)?.value
+      const numeroSerie = (formElement.querySelector("#numero_serie") as HTMLInputElement)?.value
+      const descricao = (formElement.querySelector("#descricao") as HTMLTextAreaElement)?.value
+      const aeronaveInstalada = (formElement.querySelector("#aeronave_instalada") as HTMLInputElement)?.value
 
-    setIsLoading(false)
-    router.push("/dashboard/pecas")
+      if (!codigoPeca || !numeroSerie || !descricao) {
+        throw new Error("Preencha todos os campos obrigatórios")
+      }
+
+      const token = localStorage.getItem("jwt_token")
+      if (!token) {
+        throw new Error("Token não encontrado. Por favor, faça login novamente.")
+      }
+
+      if (!isEditing && !relatorioInspecao) {
+        throw new Error("Anexe o relatório de inspeção")
+      }
+
+      const formData = new FormData()
+      formData.append("part_number", codigoPeca)
+      formData.append("numero_serie", numeroSerie)
+      formData.append("descricao", descricao)
+      if (aeronaveInstalada) {
+        formData.append("aeronave_instalada", aeronaveInstalada)
+      }
+      if (relatorioInspecao) {
+        formData.append("relatorio_inspecao", relatorioInspecao)
+      }
+      fotos.forEach((foto) => formData.append("fotos", foto))
+
+      const url = isEditing ? `http://localhost:8080/api/pecas/${initialData.id}` : "http://localhost:8080/api/pecas"
+      const method = isEditing ? "PUT" : "POST"
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Erro ao salvar peça")
+      }
+
+      router.push("/dashboard/pecas")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar peça"
+      alert(message)
+      console.error("Erro ao salvar peça:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleRelatorioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +111,7 @@ export function PecaForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Informações da Peça Fabricada</CardTitle>
+        <CardTitle>{isEditing ? "Editar Peça Fabricada" : "Informações da Peça Fabricada"}</CardTitle>
         <CardDescription>Campos marcados com * são obrigatórios</CardDescription>
       </CardHeader>
       <CardContent>
@@ -53,12 +119,24 @@ export function PecaForm() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="partnumber">Part Number *</Label>
-              <Input id="partnumber" name="partnumber" required placeholder="Ex: PN-12345" />
+              <Input 
+                id="partnumber" 
+                name="partnumber" 
+                required 
+                placeholder="Ex: PN-12345"
+                defaultValue={initialData?.codigo_peca || ""}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="numero_serie">Número de Série *</Label>
-              <Input id="numero_serie" name="numero_serie" required placeholder="Ex: SN-001" />
+              <Input 
+                id="numero_serie" 
+                name="numero_serie" 
+                required 
+                placeholder="Ex: SN-001"
+                defaultValue={initialData?.numero_serie || ""}
+              />
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -69,23 +147,31 @@ export function PecaForm() {
                 required
                 placeholder="Descrição detalhada da peça fabricada"
                 rows={3}
+                defaultValue={initialData?.descricao || ""}
               />
             </div>
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="aeronave_instalada">Aeronave Instalada (Opcional)</Label>
-              <Input id="aeronave_instalada" name="aeronave_instalada" placeholder="Ex: Boeing 737-800" />
+              <Input 
+                id="aeronave_instalada" 
+                name="aeronave_instalada" 
+                placeholder="Ex: Boeing 737-800"
+                defaultValue={initialData?.aeronave_instalada || ""}
+              />
             </div>
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Relatório de Inspeção *</h3>
+            <h3 className="text-lg font-semibold">
+              Relatório de Inspeção {!isEditing && "*"}
+            </h3>
             <div className="space-y-2">
               <Label htmlFor="relatorio_inspecao" className="cursor-pointer">
                 <div className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg hover:border-orange-500 transition-colors">
                   <div className="text-center">
                     <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">Clique para selecionar o relatório de inspeção</p>
+                    <p className="text-sm text-muted-foreground">Clique para {isEditing ? "atualizar o" : "selecionar o"} relatório de inspeção</p>
                     <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX</p>
                   </div>
                 </div>
@@ -97,7 +183,7 @@ export function PecaForm() {
                 accept=".pdf,.doc,.docx"
                 onChange={handleRelatorioChange}
                 className="hidden"
-                required
+                required={!isEditing}
               />
               {relatorioInspecao && (
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -112,6 +198,9 @@ export function PecaForm() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
+              )}
+              {isEditing && initialData?.relatorio_inspecao && !relatorioInspecao && (
+                <p className="text-sm text-muted-foreground">Arquivo atual: {initialData.relatorio_inspecao}</p>
               )}
             </div>
           </div>
@@ -167,7 +256,7 @@ export function PecaForm() {
 
           <div className="flex gap-4">
             <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Salvar Peça"}
+              {isLoading ? (isEditing ? "Atualizando..." : "Salvando...") : (isEditing ? "Atualizar Peça" : "Salvar Peça")}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
               Cancelar

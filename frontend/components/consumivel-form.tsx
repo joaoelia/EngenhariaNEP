@@ -47,10 +47,10 @@ export function ConsumivelForm() {
         },
         body: JSON.stringify({
           nome: formData.nome,
-          partNumber: formData.partNumber,
+          part_number: formData.partNumber,
           quantidade: parseInt(formData.quantidade),
           fornecedor: formData.fornecedor,
-          localEstoque: formData.localEstoque,
+          local_estoque: formData.localEstoque,
         }),
       })
 

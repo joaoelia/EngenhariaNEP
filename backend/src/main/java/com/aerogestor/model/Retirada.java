@@ -44,6 +44,54 @@ public class Retirada {
     @JsonProperty("item_local_estoque")
     private String itemLocalEstoque;
 
+    @Column(name = "item_lote")
+    @JsonProperty("item_lote")
+    private String itemLote;
+
+    @Column(name = "item_data_entrada")
+    @JsonProperty("item_data_entrada")
+    private LocalDate itemDataEntrada;
+
+    @Column(name = "item_altura")
+    @JsonProperty("item_altura")
+    private Double itemAltura;
+
+    @Column(name = "item_largura")
+    @JsonProperty("item_largura")
+    private Double itemLargura;
+
+    @Column(name = "item_espessura")
+    @JsonProperty("item_espessura")
+    private Double itemEspessura;
+
+    @Column(name = "item_especificacao")
+    @JsonProperty("item_especificacao")
+    private String itemEspecificacao;
+
+    @Column(name = "item_unidade_medida")
+    @JsonProperty("item_unidade_medida")
+    private String itemUnidadeMedida;
+
+    @Column(name = "item_nota_fiscal")
+    @JsonProperty("item_nota_fiscal")
+    private String itemNotaFiscal;
+
+    @Column(name = "item_cert_composicao")
+    @JsonProperty("item_cert_composicao")
+    private String itemCertComposicao;
+
+    @Column(name = "item_relatorio_propriedades")
+    @JsonProperty("item_relatorio_propriedades")
+    private String itemRelatorioPropriedades;
+
+    @Column(name = "item_laudo_penetrante")
+    @JsonProperty("item_laudo_penetrante")
+    private String itemLaudoPenetrante;
+
+    @Column(name = "item_imagens", columnDefinition = "JSON")
+    @JsonProperty("item_imagens")
+    private String itemImagens;
+
     @Column(nullable = false)
     private Double quantidade;
 

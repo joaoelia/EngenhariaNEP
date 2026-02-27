@@ -22,10 +22,84 @@ export function MateriaPrimaForm() {
     e.preventDefault()
     setIsLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const formElement = e.currentTarget
+      const formData = new FormData()
 
-    setIsLoading(false)
-    router.push("/dashboard/materia-prima")
+      // Adicionar campos de texto
+      const nome = (formElement.querySelector("#nome") as HTMLInputElement)?.value
+      const quantidade = (formElement.querySelector("#quantidade") as HTMLInputElement)?.value
+      const lote = (formElement.querySelector("#lote") as HTMLInputElement)?.value
+      const altura = (formElement.querySelector("#altura") as HTMLInputElement)?.value
+      const largura = (formElement.querySelector("#largura") as HTMLInputElement)?.value
+      const espessura = (formElement.querySelector("#espessura") as HTMLInputElement)?.value
+      const fornecedor = (formElement.querySelector("#fornecedor") as HTMLInputElement)?.value
+      let data_entrada = (formElement.querySelector("#data_entrada") as HTMLInputElement)?.value
+
+      // Ajustar data para evitar problema de timezone
+      if (data_entrada) {
+        const dateParts = data_entrada.split("-")
+        const dateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+        // Adicionar 1 dia para compensar o desvio de timezone
+        dateObj.setDate(dateObj.getDate() + 1)
+        data_entrada = dateObj.toISOString().split("T")[0]
+      }
+
+      if (!nome || !quantidade || !fornecedor || !notaFiscal) {
+        alert("Preencha todos os campos obrigatórios e anexe a Nota Fiscal")
+        setIsLoading(false)
+        return
+      }
+
+      formData.append("nome", nome)
+      formData.append("quantidade", quantidade)
+      formData.append("fornecedor", fornecedor)
+      
+      if (lote) formData.append("lote", lote)
+      if (altura) formData.append("altura", altura)
+      if (largura) formData.append("largura", largura)
+      if (espessura) formData.append("espessura", espessura)
+      if (data_entrada) formData.append("data_entrada", data_entrada)
+
+      // Adicionar arquivos
+      if (certComposicao) formData.append("certComposicao", certComposicao)
+      if (relatorioPropriedades) formData.append("relatorioPropriedades", relatorioPropriedades)
+      if (laudoPenetrante) formData.append("laudoPenetrante", laudoPenetrante)
+      if (notaFiscal) formData.append("notaFiscal", notaFiscal)
+
+      // Adicionar imagens
+      imagens.forEach((img) => {
+        formData.append("imagens", img)
+      })
+
+      const token = localStorage.getItem("jwt_token")
+      if (!token) {
+        alert("Token não encontrado. Por favor, faça login.")
+        setIsLoading(false)
+        return
+      }
+
+      const response = await fetch("http://localhost:8080/api/materia-prima", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Erro ao salvar matéria-prima")
+      }
+
+      router.push("/dashboard/materia-prima")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar matéria-prima"
+      alert(message)
+      console.error("Erro ao salvar matéria-prima:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleFileUpload = (

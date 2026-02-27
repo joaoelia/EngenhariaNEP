@@ -10,14 +10,37 @@ import { ViewDialog } from "@/components/view-dialog"
 import { EditDialog } from "@/components/edit-dialog"
 import { DeleteDialog } from "@/components/delete-dialog"
 
+// Função para ajustar data de timezone
+const formatDateForDisplay = (dateString?: string) => {
+  if (!dateString) return "-"
+  const dateParts = dateString.split("-")
+  const dateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))
+  // Subtrair 1 dia para compensar o ajuste feito no submit
+  dateObj.setDate(dateObj.getDate() - 1)
+  return dateObj.toLocaleDateString("pt-BR")
+}
+
 interface MateriaPrima {
-  id: string
+  id: number
   codigo: string
   descricao: string
   tipo_material: string
   quantidade_estoque: number
   unidade_medida: string
   fornecedor: string
+  lote?: string
+  data_entrada?: string
+  especificacao?: string
+  densidade?: number
+  altura?: number
+  largura?: number
+  espessura?: number
+  cert_composicao?: string
+  relatorio_propriedades?: string
+  laudo_penetrante?: string
+  nota_fiscal?: string
+  imagens?: string
+  certificado_qualidade?: string
 }
 
 interface MateriaPrimaTableProps {
@@ -30,13 +53,57 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
   const [deleteItem, setDeleteItem] = useState<MateriaPrima | null>(null)
 
   const handleSaveEdit = async (data: Record<string, any>) => {
-    console.log("Salvando:", data)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const token = localStorage.getItem("jwt_token")
+      if (!token) {
+        alert("Token não encontrado. Por favor, faça login.")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8080/api/materia-prima/${editItem?.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao atualizar matéria-prima")
+      }
+
+      setEditItem(null)
+      window.location.reload()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro desconhecido")
+    }
   }
 
   const handleDelete = async () => {
-    console.log("Excluindo:", deleteItem?.id)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const token = localStorage.getItem("jwt_token")
+      if (!token) {
+        alert("Token não encontrado. Por favor, faça login.")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8080/api/materia-prima/${deleteItem?.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao excluir matéria-prima")
+      }
+
+      setDeleteItem(null)
+      window.location.reload()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro desconhecido")
+    }
   }
 
   if (materiaPrima.length === 0) {
@@ -55,28 +122,26 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50">
-            <TableHead className="font-semibold">Código</TableHead>
-            <TableHead className="font-semibold">Descrição</TableHead>
-            <TableHead className="font-semibold">Tipo de Material</TableHead>
-            <TableHead className="font-semibold">Estoque</TableHead>
+            <TableHead className="font-semibold">Nome</TableHead>
+            <TableHead className="font-semibold">Quantidade</TableHead>
+            <TableHead className="font-semibold">Lote</TableHead>
             <TableHead className="font-semibold">Fornecedor</TableHead>
+            <TableHead className="font-semibold">Data Entrada</TableHead>
             <TableHead className="font-semibold text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {materiaPrima.map((item) => (
             <TableRow key={item.id} className="hover:bg-slate-50">
-              <TableCell className="font-mono text-sm">{item.codigo}</TableCell>
               <TableCell>{item.descricao}</TableCell>
               <TableCell>
-                <Badge variant="outline">{item.tipo_material}</Badge>
-              </TableCell>
-              <TableCell>
                 <Badge variant="secondary">
-                  {item.quantidade_estoque} {item.unidade_medida}
+                  {item.quantidade_estoque}
                 </Badge>
               </TableCell>
+              <TableCell>{item.lote || "-"}</TableCell>
               <TableCell>{item.fornecedor}</TableCell>
+              <TableCell>{formatDateForDisplay(item.data_entrada)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setViewItem(item)}>
@@ -108,15 +173,23 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
           title="Detalhes da Matéria-Prima"
           data={viewItem}
           fields={[
-            { key: "codigo", label: "Código" },
-            { key: "descricao", label: "Descrição" },
-            { key: "tipo_material", label: "Tipo de Material" },
+            { key: "descricao", label: "Nome" },
             {
               key: "quantidade_estoque",
-              label: "Estoque",
-              render: (value) => `${value} ${viewItem.unidade_medida}`,
+              label: "Quantidade",
+              render: (value) => `${value}`,
             },
+            { key: "lote", label: "Lote" },
             { key: "fornecedor", label: "Fornecedor" },
+            { key: "data_entrada", label: "Data de Entrada", render: (value) => formatDateForDisplay(value) },
+            { key: "altura", label: "Altura (mm)", type: "number" },
+            { key: "largura", label: "Largura (mm)", type: "number" },
+            { key: "espessura", label: "Espessura (mm)", type: "number" },
+            { key: "cert_composicao", label: "Certificado de Composição", type: "files" },
+            { key: "relatorio_propriedades", label: "Relatório de Propriedades", type: "files" },
+            { key: "laudo_penetrante", label: "Laudo de Ensaio Penetrante", type: "files" },
+            { key: "nota_fiscal", label: "Nota Fiscal", type: "files" },
+            { key: "imagens", label: "Imagens", type: "files" },
           ]}
         />
       )}
@@ -129,12 +202,11 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
           title="Editar Matéria-Prima"
           data={editItem}
           fields={[
-            { key: "codigo", label: "Código", required: true, disabled: true },
-            { key: "descricao", label: "Descrição", required: true },
-            { key: "tipo_material", label: "Tipo de Material", required: true },
+            { key: "descricao", label: "Nome", required: true },
             { key: "quantidade_estoque", label: "Quantidade", type: "number", required: true },
-            { key: "unidade_medida", label: "Unidade", required: true },
+            { key: "lote", label: "Lote" },
             { key: "fornecedor", label: "Fornecedor", required: true },
+            { key: "data_entrada", label: "Data de Entrada", type: "date" },
           ]}
           onSave={handleSaveEdit}
         />
