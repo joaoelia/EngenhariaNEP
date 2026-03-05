@@ -95,8 +95,11 @@ export function MateriaPrimaForm() {
       router.push("/dashboard/materia-prima")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao salvar matéria-prima"
-      alert(message)
-      console.error("Erro ao salvar matéria-prima:", error)
+      toast({
+        title: "Erro",
+        description: "Falha ao salvar. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }

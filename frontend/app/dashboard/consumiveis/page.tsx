@@ -73,7 +73,7 @@ export default function ConsumiveisPage() {
       const data = await response.json()
       setRetiradas(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error("Erro ao buscar retiradas:", err)
+      // Error handling silently
     }
   }
 
@@ -149,15 +149,22 @@ export default function ConsumiveisPage() {
         },
         body: JSON.stringify({
           nome: data.nome,
-          partNumber: data.part_number,
-          quantidade: parseInt(data.quantidade),
+          part_number: data.part_number,
+          quantidade: Number(data.quantidade),
           fornecedor: data.fornecedor,
-          localEstoque: data.local_estoque,
+          local_estoque: data.local_estoque,
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao atualizar consumível")
+        let apiMessage = "Erro ao atualizar consumível"
+        try {
+          const errorData = await response.json()
+          apiMessage = errorData?.message || errorData?.error || apiMessage
+        } catch {
+          // ignore parse error and keep default message
+        }
+        throw new Error(apiMessage)
       }
 
       const updated = await response.json()

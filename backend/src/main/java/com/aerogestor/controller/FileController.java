@@ -15,7 +15,6 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/files")
-@CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*")
 @RequiredArgsConstructor
 public class FileController {
 

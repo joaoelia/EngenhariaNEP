@@ -40,11 +40,12 @@ public class OrdemController {
             @RequestParam("projeto") String projeto,
             @RequestParam("part_number") String partNumber,
             @RequestParam("status") String status,
+            @RequestParam("data_criacao") String dataCriacao,
             @RequestParam("dados_formulario") String dadosFormulario,
             @RequestParam(value = "arquivo_pdf", required = false) MultipartFile arquivoPdf
     ) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ordemService.createWithPdf(tipoOrdem, projeto, partNumber, status, dadosFormulario, arquivoPdf)
+                ordemService.createWithPdf(tipoOrdem, projeto, partNumber, status, dataCriacao, dadosFormulario, arquivoPdf)
         );
     }
 

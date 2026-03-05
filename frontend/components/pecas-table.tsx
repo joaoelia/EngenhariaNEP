@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ interface PecasTableProps {
 }
 
 export function PecasTable({ pecas, onChanged }: PecasTableProps) {
+  const { toast } = useToast()
   const [viewItem, setViewItem] = useState<Peca | null>(null)
   const [statusValue, setStatusValue] = useState("Em_Inspecao")
   const [isSavingStatus, setIsSavingStatus] = useState(false)
@@ -80,7 +82,11 @@ export function PecasTable({ pecas, onChanged }: PecasTableProps) {
 
     const token = localStorage.getItem("jwt_token")
     if (!token) {
-      alert("Token não encontrado. Por favor, faça login novamente.")
+      toast({
+        title: "Sesão expirada",
+        description: "Por favor, faça login novamente.",
+        variant: "destructive",
+      })
       return
     }
 
@@ -131,8 +137,11 @@ export function PecasTable({ pecas, onChanged }: PecasTableProps) {
       }
       setViewItem(null)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao atualizar status"
-      alert(message)
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar status. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     } finally {
       setIsSavingStatus(false)
     }

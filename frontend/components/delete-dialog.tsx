@@ -30,8 +30,6 @@ export function DeleteDialog({ open, onOpenChange, title, description, itemName,
     try {
       await onConfirm()
       onOpenChange(false)
-    } catch (error) {
-      console.error("Erro ao excluir:", error)
     } finally {
       setIsLoading(false)
     }
@@ -47,16 +45,20 @@ export function DeleteDialog({ open, onOpenChange, title, description, itemName,
             </div>
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="pt-3">
-            {description}
-            {itemName && (
-              <div className="mt-3 rounded-md bg-slate-100 p-3">
-                <span className="font-semibold text-slate-900">{itemName}</span>
-              </div>
-            )}
-            <p className="mt-3 text-red-600 font-medium">Esta ação não pode ser desfeita.</p>
-          </AlertDialogDescription>
         </AlertDialogHeader>
+        
+        <AlertDialogDescription className="sr-only">{description}</AlertDialogDescription>
+        
+        <div className="space-y-3">
+          <p className="text-muted-foreground text-sm">{description}</p>
+          {itemName && (
+            <div className="rounded-md bg-slate-100 p-3">
+              <span className="font-semibold text-slate-900">{itemName}</span>
+            </div>
+          )}
+          <p className="text-red-600 font-medium text-sm">Esta ação não pode ser desfeita.</p>
+        </div>
+        
         <AlertDialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancelar

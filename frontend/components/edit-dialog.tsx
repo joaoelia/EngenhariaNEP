@@ -73,7 +73,7 @@ export function EditDialog({ open, onOpenChange, title, data, fields, onSave }: 
       await onSave(submitData)
       onOpenChange(false)
     } catch (error) {
-      console.error("Erro ao salvar:", error)
+      // Error handling silently
     } finally {
       setIsLoading(false)
     }

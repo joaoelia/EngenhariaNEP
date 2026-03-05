@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,7 @@ interface MateriaPrimaTableProps {
 }
 
 export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
+  const { toast } = useToast()
   const [viewItem, setViewItem] = useState<MateriaPrima | null>(null)
   const [editItem, setEditItem] = useState<MateriaPrima | null>(null)
   const [deleteItem, setDeleteItem] = useState<MateriaPrima | null>(null)
@@ -56,7 +58,11 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
     try {
       const token = localStorage.getItem("jwt_token")
       if (!token) {
-        alert("Token não encontrado. Por favor, faça login.")
+        toast({
+          title: "Sessão expirada",
+          description: "Por favor, faça login novamente.",
+          variant: "destructive",
+        })
         return
       }
 
@@ -76,7 +82,11 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
       setEditItem(null)
       window.location.reload()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro desconhecido")
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -84,7 +94,11 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
     try {
       const token = localStorage.getItem("jwt_token")
       if (!token) {
-        alert("Token não encontrado. Por favor, faça login.")
+        toast({
+          title: "Sessão expirada",
+          description: "Por favor, faça login novamente.",
+          variant: "destructive",
+        })
         return
       }
 
@@ -102,7 +116,11 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
       setDeleteItem(null)
       window.location.reload()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro desconhecido")
+      toast({
+        title: "Erro",
+        description: "Falha ao deletar. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 

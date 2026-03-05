@@ -161,7 +161,7 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
               <SelectContent>
                 {consumiveis.map((item) => (
                   <SelectItem key={item.id} value={String(item.id)}>
-                    {item.nome} - {item.part_number} (Disponível: {item.quantidade})
+                    {item.nome} (Disponível: {item.quantidade})
                   </SelectItem>
                 ))}
               </SelectContent>

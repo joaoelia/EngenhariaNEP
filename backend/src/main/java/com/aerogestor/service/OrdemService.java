@@ -40,6 +40,7 @@ public class OrdemService {
             String projeto,
             String partNumber,
             String status,
+            String dataCriacao,
             String dadosFormulario,
             MultipartFile arquivoPdf
     ) throws IOException {
@@ -59,6 +60,7 @@ public class OrdemService {
         ordem.setProjeto(projeto);
         ordem.setPartNumber(partNumber);
         ordem.setStatus(status);
+        ordem.setDataCriacao(java.time.LocalDate.parse(dataCriacao));
         ordem.setDadosFormulario(dadosFormulario);
         ordem.setArquivoPdf(pdfFileName);
 

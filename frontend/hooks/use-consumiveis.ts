@@ -53,10 +53,10 @@ export function useConsumiveis() {
         },
         body: JSON.stringify({
           nome: consumivel.nome,
-          partNumber: consumivel.partNumber,
+          part_number: consumivel.partNumber,
           quantidade: consumivel.quantidade,
           fornecedor: consumivel.fornecedor,
-          localEstoque: consumivel.localEstoque,
+          local_estoque: consumivel.localEstoque,
         }),
       });
 
@@ -87,10 +87,10 @@ export function useConsumiveis() {
         },
         body: JSON.stringify({
           nome: consumivel.nome,
-          partNumber: consumivel.partNumber,
+          part_number: consumivel.partNumber,
           quantidade: consumivel.quantidade,
           fornecedor: consumivel.fornecedor,
-          localEstoque: consumivel.localEstoque,
+          local_estoque: consumivel.localEstoque,
         }),
       });
 

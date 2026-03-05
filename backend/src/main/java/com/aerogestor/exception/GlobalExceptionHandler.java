@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                ex.getMessage(),
+                "An internal server error occurred. Please try again later.",
                 request.getDescription(false).replace("uri=", "")
         );
         

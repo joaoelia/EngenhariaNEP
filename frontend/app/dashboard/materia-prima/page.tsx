@@ -73,7 +73,7 @@ export default function MateriaPrimaPage() {
       const data = await response.json()
       setRetiradas(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error("Erro ao buscar retiradas:", err)
+      // Error handling silently
     }
   }
 

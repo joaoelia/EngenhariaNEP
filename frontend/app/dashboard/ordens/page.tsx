@@ -31,7 +31,7 @@ export default function OrdensPage() {
 
   const fetchOrdens = async () => {
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("jwt_token")
       const response = await fetch("http://localhost:8080/api/ordens", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -48,7 +48,7 @@ export default function OrdensPage() {
         setOrdens(data)
       }
     } catch (error) {
-      console.error("Erro ao buscar ordens:", error)
+      // Error handling silently
     } finally {
       setLoading(false)
     }

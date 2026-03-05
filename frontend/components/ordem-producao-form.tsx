@@ -2,10 +2,12 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "@/hooks/use-toast"
 import { FileText, Download, Plus, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import jsPDF from "jspdf"
@@ -48,6 +50,8 @@ interface OrdemProducaoData {
 }
 
 export function OrdemProducaoForm() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<OrdemProducaoData>({
     projeto: "",
     partNumber: "",
@@ -282,7 +286,60 @@ export function OrdemProducaoForm() {
     doc.setFontSize(8)
     doc.text("Nep Aviation Com. Imp. Exp. Ltda – Documento interno de controle de produção", 10, 285)
 
-    doc.save(`Ordem-Producao-${formData.partNumber || "documento"}.pdf`)
+    // Salvar PDF e enviar para o backend
+    uploadToBackend(doc)
+  }
+
+  const uploadToBackend = async (doc: jsPDF) => {
+    try {
+      setLoading(true)
+
+      const pdfBlob = doc.output("blob")
+      const formDataToSend = new FormData()
+      formDataToSend.append("tipo_ordem", "producao")
+      formDataToSend.append("projeto", formData.projeto)
+      formDataToSend.append("part_number", formData.partNumber)
+      formDataToSend.append("status", "Em Andamento")
+      formDataToSend.append("data_criacao", new Date().toISOString().split('T')[0])
+      formDataToSend.append("dados_formulario", JSON.stringify(formData))
+      formDataToSend.append("arquivo_pdf", pdfBlob, `OP-${formData.partNumber}.pdf`)
+
+      const token = localStorage.getItem("jwt_token")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/ordens`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataToSend,
+      })
+
+      if (response.status === 401) {
+        toast({
+          title: "Sessão expirada",
+          description: "Faça login novamente.",
+        })
+        router.push("/login")
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Erro ao salvar ordem`)
+      }
+
+      toast({
+        title: "PDF salvo com sucesso",
+        description: "Ordem de produção registrada.",
+      })
+      router.push("/dashboard/ordens")
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar PDF",
+        description: "Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -649,9 +706,9 @@ export function OrdemProducaoForm() {
           </div>
 
           <div className="flex gap-4">
-            <Button type="button" onClick={gerarPDF} className="bg-purple-600 hover:bg-purple-700">
+            <Button type="button" onClick={gerarPDF} className="bg-purple-600 hover:bg-purple-700" disabled={loading}>
               <Download className="h-4 w-4 mr-2" />
-              Gerar PDF
+              {loading ? "Salvando..." : "Gerar e salvar PDF"}
             </Button>
           </div>
         </form>

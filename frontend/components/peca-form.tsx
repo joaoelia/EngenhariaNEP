@@ -85,8 +85,11 @@ export function PecaForm({ initialData }: PecaFormProps) {
       router.push("/dashboard/pecas")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao salvar peça"
-      alert(message)
-      console.error("Erro ao salvar peça:", error)
+      toast({
+        title: "Erro",
+        description: "Falha ao salvar. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }

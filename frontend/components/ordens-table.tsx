@@ -2,13 +2,16 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Eye, Pencil, Trash2, Download } from "lucide-react"
 import Link from "next/link"
-import { ViewDialog } from "@/components/view-dialog"
 import { DeleteDialog } from "@/components/delete-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Ordem {
   id: number
@@ -29,25 +32,30 @@ interface OrdensTableProps {
 
 export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [viewItem, setViewItem] = useState<Ordem | null>(null)
   const [deleteItem, setDeleteItem] = useState<Ordem | null>(null)
+  const [editingStatus, setEditingStatus] = useState<string>("")
+  const [savingStatus, setSavingStatus] = useState(false)
 
   const handleDownloadPDF = async (ordem: Ordem) => {
     if (!ordem.arquivo_pdf) {
-      alert("PDF não disponível")
+      toast({
+        title: "Aviso",
+        description: "PDF não disponível para este pedido.",
+        variant: "default",
+      })
       return
     }
 
     try {
-      const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:8080/uploads/${ordem.arquivo_pdf}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await fetch(`http://localhost:8080/api/files/download/${ordem.arquivo_pdf}`, {
+        method: "GET",
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao baixar PDF")
+        const errorText = await response.text()
+        throw new Error(`Erro ao baixar PDF (${response.status}): ${errorText || "Arquivo não encontrado"}`)
       }
 
       const blob = await response.blob()
@@ -60,8 +68,11 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error("Erro ao baixar PDF:", error)
-      alert("Erro ao baixar PDF")
+      toast({
+        title: "Erro",
+        description: "Falha ao baixar PDF. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -69,7 +80,7 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
     if (!deleteItem) return
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("jwt_token")
       const response = await fetch(`http://localhost:8080/api/ordens/${deleteItem.id}`, {
         method: "DELETE",
         headers: {
@@ -89,9 +100,57 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
       setDeleteItem(null)
       onUpdate()
     } catch (error) {
-      console.error("Erro ao excluir ordem:", error)
-      alert("Erro ao excluir ordem")
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir ordem. Por favor, tente novamente.",
+        variant: "destructive",
+      })
     }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!viewItem) return
+
+    try {
+      setSavingStatus(true)
+      const token = localStorage.getItem("jwt_token")
+      const response = await fetch(`http://localhost:8080/api/ordens/${viewItem.id}/status?status=${encodeURIComponent(newStatus)}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.status === 401) {
+        router.push("/login")
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error("Erro ao atualizar status")
+      }
+
+      setEditingStatus(newStatus)
+      onUpdate()
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar status. Por favor, tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingStatus(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-')
+    return `${day}/${month}/${year}`
+  }
+
+  const openViewDialog = (item: Ordem) => {
+    setViewItem(item)
+    setEditingStatus(item.status)
   }
 
   if (ordens.length === 0) {
@@ -167,13 +226,13 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
               </TableCell>
               <TableCell className="max-w-xs truncate font-medium">{item.projeto}</TableCell>
               <TableCell className="font-mono text-sm">{item.part_number}</TableCell>
-              <TableCell>{new Date(item.data_criacao).toLocaleDateString("pt-BR")}</TableCell>
+              <TableCell>{formatDate(item.data_criacao)}</TableCell>
               <TableCell>
                 <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => setViewItem(item)}>
+                  <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => openViewDialog(item)}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   {item.arquivo_pdf && (
@@ -204,49 +263,80 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
 
       {/* View Dialog */}
       {viewItem && (
-        <ViewDialog
-          open={!!viewItem}
-          onOpenChange={() => setViewItem(null)}
-          title="Detalhes da Ordem"
-          data={{
-            ...viewItem,
-            tipo_ordem_display: formatTipoDisplay(viewItem.tipo_ordem),
-          }}
-          fields={[
-            { key: "numero_ordem", label: "Número" },
-            {
-              key: "tipo_ordem_display",
-              label: "Tipo",
-              render: (value) => <Badge>{value}</Badge>,
-            },
-            { key: "projeto", label: "Projeto" },
-            { key: "part_number", label: "Part Number" },
-            { key: "data_criacao", label: "Data de Criação", type: "date" },
-            {
-              key: "status",
-              label: "Status",
-              render: (value) => <Badge>{value}</Badge>,
-            },
-            {
-              key: "arquivo_pdf",
-              label: "PDF",
-              render: (value) =>
-                value ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700"
-                    onClick={() => handleDownloadPDF(viewItem)}
-                  >
-                    <Download className="h-3 w-3 mr-2" />
-                    Baixar PDF
-                  </Button>
-                ) : (
-                  <span className="text-slate-500">Não disponível</span>
-                ),
-            },
-          ]}
-        />
+        <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Detalhes da Ordem</DialogTitle>
+              <DialogDescription>Visualização e edição da ordem</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-semibold text-slate-600">Número</Label>
+                  <p className="text-sm font-mono font-bold">{viewItem.numero_ordem}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-slate-600">Tipo</Label>
+                  <div className="mt-1">
+                    <Badge className={getTipoColor(viewItem.tipo_ordem)}>
+                      {formatTipoDisplay(viewItem.tipo_ordem)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold text-slate-600">Projeto</Label>
+                <p className="text-sm">{viewItem.projeto}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold text-slate-600">Part Number</Label>
+                <p className="text-sm font-mono">{viewItem.part_number}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold text-slate-600">Data de Criação</Label>
+                <p className="text-sm">{formatDate(viewItem.data_criacao)}</p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold text-slate-600">Status *</Label>
+                <Select
+                  value={editingStatus}
+                  onValueChange={handleStatusChange}
+                  disabled={savingStatus}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Fazer">Fazer</SelectItem>
+                    <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                    <SelectItem value="Concluída">Concluída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {viewItem.arquivo_pdf && (
+                <div>
+                  <Label className="text-sm font-semibold text-slate-600">PDF</Label>
+                  <div className="mt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-blue-600 hover:text-blue-700"
+                      onClick={() => handleDownloadPDF(viewItem)}
+                    >
+                      <Download className="h-3 w-3 mr-2" />
+                      Baixar PDF
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Delete Dialog */}

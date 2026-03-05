@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "@/hooks/use-toast"
 import { FileText, Download } from "lucide-react"
 import jsPDF from "jspdf"
 
@@ -173,11 +174,12 @@ export function OrdemFabricacaoForm() {
       formDataToSend.append("projeto", formData.projeto)
       formDataToSend.append("part_number", formData.partNumber)
       formDataToSend.append("status", "Em Andamento")
+      formDataToSend.append("data_criacao", new Date().toISOString().split('T')[0])
       formDataToSend.append("dados_formulario", JSON.stringify(formData))
       formDataToSend.append("arquivo_pdf", pdfBlob, `OF-${formData.partNumber}.pdf`)
 
-      const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:8080/api/ordens", {
+      const token = localStorage.getItem("jwt_token")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/ordens`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -186,20 +188,29 @@ export function OrdemFabricacaoForm() {
       })
 
       if (response.status === 401) {
-        alert("Sessão expirada. Por favor, faça login novamente.")
+        toast({
+          title: "Sessão expirada",
+          description: "Faça login novamente.",
+        })
         router.push("/login")
         return
       }
 
       if (!response.ok) {
-        throw new Error("Erro ao salvar ordem")
+        throw new Error(`Erro ao salvar ordem`)
       }
 
-      alert("Ordem de fabricação criada com sucesso!")
+      toast({
+        title: "PDF salvo com sucesso",
+        description: "Ordem de fabricação registrada.",
+      })
       router.push("/dashboard/ordens")
     } catch (error) {
-      console.error("Erro ao salvar ordem:", error)
-      alert("Erro ao salvar ordem. Tente novamente.")
+      toast({
+        title: "Erro ao salvar PDF",
+        description: "Tente novamente.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -436,7 +447,7 @@ export function OrdemFabricacaoForm() {
               disabled={loading}
             >
               <Download className="h-4 w-4 mr-2" />
-              {loading ? "Salvando..." : "Gerar e Salvar PDF"}
+              {loading ? "Salvando..." : "Gerar e salvar PDF"}
             </Button>
           </div>
         </form>

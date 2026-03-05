@@ -80,7 +80,7 @@ export default function DashboardPage() {
           })
         )
       } catch (error) {
-        console.error("Erro ao buscar estatísticas:", error)
+        // Error handling silently
       }
     }
 
@@ -183,6 +183,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
     </div>
   )
 }
