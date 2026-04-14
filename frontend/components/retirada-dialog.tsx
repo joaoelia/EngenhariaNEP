@@ -29,7 +29,7 @@ interface RetiradaDialogProps {
   consumiveis: Consumivel[]
   children: React.ReactNode
   tipo?: "consumivel" | "materia-prima" | "peca"
-  onRetiradaAdded?: () => void
+  onRetiradaAdded?: () => void | Promise<void>
 }
 
 export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onRetiradaAdded }: RetiradaDialogProps) {
@@ -82,12 +82,25 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (isLoading) return
+
     setError(null)
     setIsLoading(true)
 
     try {
       if (!formData.itemId) {
         throw new Error("Selecione um item")
+      }
+
+      const selectedItem = consumiveis.find((c) => String(c.id) === formData.itemId)
+      const quantidade = Math.round(Number(formData.quantidade))
+
+      if (!Number.isFinite(quantidade) || quantidade <= 0) {
+        throw new Error("Informe uma quantidade válida")
+      }
+
+      if (selectedItem && quantidade > Number(selectedItem.quantidade)) {
+        throw new Error(`Quantidade insuficiente. Disponível: ${selectedItem.quantidade}`)
       }
 
       const token = localStorage.getItem("jwt_token")
@@ -104,8 +117,8 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
         body: JSON.stringify({
           tipo_item: getTipoItemAPI(),
           item_id: parseInt(formData.itemId),
-          item_nome: consumiveis.find((c) => String(c.id) === formData.itemId)?.nome || "",
-          quantidade: parseFloat(formData.quantidade),
+          item_nome: selectedItem?.nome || "",
+          quantidade,
           pessoa: formData.pessoa,
           data: formData.data,
         }),
@@ -128,7 +141,7 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
 
       // Chamar callback para atualizar lista
       if (onRetiradaAdded) {
-        onRetiradaAdded()
+        await onRetiradaAdded()
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido")
@@ -174,8 +187,8 @@ export function RetiradaDialog({ consumiveis, children, tipo = "consumivel", onR
               id="quantidade"
               name="quantidade"
               type="number"
-              step="0.01"
-              min="0.01"
+              step="1"
+              min="1"
               required
               placeholder="0"
               value={formData.quantidade}

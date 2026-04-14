@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface PecaFormProps {
   initialData?: {
@@ -18,6 +19,9 @@ interface PecaFormProps {
     numero_serie?: string
     numero_desenho: string
     aeronave_instalada?: string
+    quantidade_produzida?: number
+    estoque_minimo?: number
+    estoque_maximo?: number
     relatorio_inspecao?: string
     fotos?: string
   }
@@ -25,6 +29,7 @@ interface PecaFormProps {
 
 export function PecaForm({ initialData }: PecaFormProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const isEditing = !!initialData
   const [isLoading, setIsLoading] = useState(false)
   const [relatorioInspecao, setRelatorioInspecao] = useState<File | null>(null)
@@ -40,9 +45,21 @@ export function PecaForm({ initialData }: PecaFormProps) {
       const numeroSerie = (formElement.querySelector("#numero_serie") as HTMLInputElement)?.value
       const descricao = (formElement.querySelector("#descricao") as HTMLTextAreaElement)?.value
       const aeronaveInstalada = (formElement.querySelector("#aeronave_instalada") as HTMLInputElement)?.value
+      const estoqueMinimo = (formElement.querySelector("#estoque_minimo") as HTMLInputElement)?.value
+      const estoqueMaximo = (formElement.querySelector("#estoque_maximo") as HTMLInputElement)?.value
+      const quantidadeProduzida = (formElement.querySelector("#quantidade_produzida") as HTMLInputElement)?.value
 
-      if (!codigoPeca || !numeroSerie || !descricao) {
+      if (!codigoPeca || !numeroSerie || !descricao || !quantidadeProduzida) {
         throw new Error("Preencha todos os campos obrigatórios")
+      }
+
+      const quantidadeInt = parseInt(quantidadeProduzida, 10)
+      if (isNaN(quantidadeInt) || quantidadeInt < 1) {
+        throw new Error("Quantidade deve ser um número inteiro maior que zero")
+      }
+
+      if (estoqueMinimo && estoqueMaximo && Number(estoqueMinimo) > Number(estoqueMaximo)) {
+        throw new Error("Estoque mínimo não pode ser maior que o estoque máximo")
       }
 
       const token = localStorage.getItem("jwt_token")
@@ -61,6 +78,13 @@ export function PecaForm({ initialData }: PecaFormProps) {
       if (aeronaveInstalada) {
         formData.append("aeronave_instalada", aeronaveInstalada)
       }
+      if (estoqueMinimo) {
+        formData.append("estoque_minimo", estoqueMinimo)
+      }
+      if (estoqueMaximo) {
+        formData.append("estoque_maximo", estoqueMaximo)
+      }
+      formData.append("quantidade_produzida", String(quantidadeInt))
       if (relatorioInspecao) {
         formData.append("relatorio_inspecao", relatorioInspecao)
       }
@@ -161,6 +185,46 @@ export function PecaForm({ initialData }: PecaFormProps) {
                 name="aeronave_instalada" 
                 placeholder="Ex: Boeing 737-800"
                 defaultValue={initialData?.aeronave_instalada || ""}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="quantidade_produzida">Quantidade *</Label>
+              <Input
+                id="quantidade_produzida"
+                name="quantidade_produzida"
+                type="number"
+                min={1}
+                step="1"
+                required
+                placeholder="0"
+                defaultValue={initialData?.quantidade_produzida?.toString() || ""}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
+              <Input
+                id="estoque_minimo"
+                name="estoque_minimo"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="0"
+                defaultValue={initialData?.estoque_minimo?.toString() || ""}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estoque_maximo">Estoque Máximo</Label>
+              <Input
+                id="estoque_maximo"
+                name="estoque_maximo"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="0"
+                defaultValue={initialData?.estoque_maximo?.toString() || ""}
               />
             </div>
           </div>

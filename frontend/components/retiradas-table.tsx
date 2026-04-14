@@ -1,15 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { DeleteDialog } from "@/components/delete-dialog"
+import { Pagination } from "@/components/pagination"
 
 // Função para formatar data sem ajuste de timezone (para datas que vêm do backend)
 const formatDateWithoutAdjustment = (dateString?: string) => {
@@ -29,13 +32,20 @@ interface Retirada {
 
 interface RetiradasTableProps {
   retiradas: Retirada[]
-  onDelete?: (id: string) => Promise<void>
+  onDelete?: (id: string, options: { quantidade: number; cancelarTudo: boolean }) => Promise<void>
 }
 
 export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<"todos" | "nome" | "data">("todos")
   const [deleteItem, setDeleteItem] = useState<Retirada | null>(null)
+  const [cancelarTudo, setCancelarTudo] = useState(true)
+  const [quantidadeCancelar, setQuantidadeCancelar] = useState("")
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+  const tableViewportRef = useRef<HTMLDivElement | null>(null)
 
   const filteredRetiradas = retiradas.filter((retirada) => {
     if (!searchTerm) return true
@@ -60,6 +70,106 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
     }
   })
 
+  // Paginação
+  const totalPages = Math.ceil(filteredRetiradas.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedRetiradas = filteredRetiradas.slice(startIndex, startIndex + itemsPerPage)
+
+  useEffect(() => {
+    const viewport = tableViewportRef.current
+    if (!viewport) return
+
+    const calculateItemsPerPage = () => {
+      const header = viewport.querySelector("thead") as HTMLElement | null
+      const firstDataRow = viewport.querySelector('tbody tr[data-row="true"]') as HTMLElement | null
+
+      const viewportHeight = viewport.clientHeight
+      const headerHeight = header?.offsetHeight ?? 36
+      const rowHeight = firstDataRow?.offsetHeight ?? 36
+
+      const availableBodyHeight = Math.max(0, viewportHeight - headerHeight)
+      const computed = Math.floor(availableBodyHeight / Math.max(1, rowHeight))
+      const clamped = Math.max(3, Math.min(20, computed || 5))
+
+      setItemsPerPage((previous) => (previous === clamped ? previous : clamped))
+    }
+
+    calculateItemsPerPage()
+
+    const resizeObserver = new ResizeObserver(calculateItemsPerPage)
+    resizeObserver.observe(viewport)
+    window.addEventListener("resize", calculateItemsPerPage)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", calculateItemsPerPage)
+    }
+  }, [filteredRetiradas.length])
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  // Reset de página quando o filtro muda
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+    setCurrentPage(1)
+  }
+
+  const handleFilterChange = (value: "todos" | "nome" | "data") => {
+    setFilterType(value)
+    setCurrentPage(1)
+  }
+
+  const openDeleteDialog = (retirada: Retirada) => {
+    setDeleteItem(retirada)
+    setCancelarTudo(true)
+    setQuantidadeCancelar(retirada.quantidade.toString())
+    setDeleteError(null)
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteItem(null)
+    setCancelarTudo(true)
+    setQuantidadeCancelar("")
+    setDeleteError(null)
+    setIsDeleting(false)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteItem || !onDelete) return
+
+    if (!cancelarTudo) {
+      const quantidade = Number(quantidadeCancelar)
+      if (!Number.isFinite(quantidade) || quantidade <= 0) {
+        setDeleteError("Informe uma quantidade válida para cancelar")
+        return
+      }
+      if (quantidade > deleteItem.quantidade) {
+        setDeleteError("A quantidade para cancelamento não pode ser maior que a retirada registrada")
+        return
+      }
+    }
+
+    try {
+      setIsDeleting(true)
+      setDeleteError(null)
+
+      await onDelete(deleteItem.id, {
+        quantidade: cancelarTudo ? deleteItem.quantidade : Math.round(Number(quantidadeCancelar)),
+        cancelarTudo,
+      })
+
+      closeDeleteDialog()
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Erro ao cancelar retirada")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   if (retiradas.length === 0) {
     return (
       <div className="text-center py-12">
@@ -69,19 +179,19 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
+    <div className="h-full min-h-0 space-y-2 flex flex-col">
+      <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
             placeholder="Pesquisar retiradas..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            onChange={handleSearchChange}
+            className="h-8 pl-8 text-xs"
           />
         </div>
-        <Select value={filterType} onValueChange={(value: "todos" | "nome" | "data") => setFilterType(value)}>
-          <SelectTrigger className="w-[180px]">
+        <Select value={filterType} onValueChange={handleFilterChange}>
+          <SelectTrigger className="h-8 w-[160px] text-xs">
             <SelectValue placeholder="Filtrar por" />
           </SelectTrigger>
           <SelectContent>
@@ -92,8 +202,9 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
         </Select>
       </div>
 
-      <div className="rounded-md border border-slate-200">
-        <Table>
+      <div className="rounded-md border border-slate-200 overflow-hidden min-h-0 flex-1 flex flex-col">
+        <div ref={tableViewportRef} className="min-h-0 flex-1 overflow-auto">
+          <Table className="text-sm [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:text-xs [&_th]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-slate-50">
           <TableHeader>
             <TableRow className="bg-slate-50">
               <TableHead className="font-semibold">Nome do Item</TableHead>
@@ -104,11 +215,11 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRetiradas.map((retirada) => (
-              <TableRow key={retirada.id} className="hover:bg-slate-50">
+            {paginatedRetiradas.map((retirada) => (
+              <TableRow key={retirada.id} data-row="true" className="h-9 hover:bg-slate-50">
                 <TableCell className="font-medium">{retirada.item_nome}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <Badge variant="outline" className="h-6 px-2 text-xs bg-green-50 text-green-700 border-green-200">
                     {retirada.quantidade}
                   </Badge>
                 </TableCell>
@@ -119,8 +230,11 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => setDeleteItem(retirada)}
+                      className="h-8 w-8 text-red-600 hover:text-red-700"
+                      onClick={(event) => {
+                        event.currentTarget.blur()
+                        openDeleteDialog(retirada)
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -128,7 +242,7 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
                 )}
               </TableRow>
             ))}
-            {filteredRetiradas.length === 0 && (
+            {paginatedRetiradas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={onDelete ? 5 : 4} className="text-center py-8 text-slate-500">
                   Nenhuma retirada encontrada com "{searchTerm}"
@@ -136,23 +250,70 @@ export function RetiradasTable({ retiradas, onDelete }: RetiradasTableProps) {
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
+        {filteredRetiradas.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredRetiradas.length}
+            itemsPerPage={itemsPerPage}
+          />
+        )}
       </div>
 
       {deleteItem && (
-        <DeleteDialog
-          open={!!deleteItem}
-          onOpenChange={() => setDeleteItem(null)}
-          title="Excluir Retirada"
-          description="Tem certeza que deseja excluir esta retirada?"
-          itemName={deleteItem.item_nome}
-          onConfirm={async () => {
-            if (onDelete) {
-              await onDelete(deleteItem.id)
-            }
-            setDeleteItem(null)
-          }}
-        />
+        <AlertDialog open={!!deleteItem} onOpenChange={(open) => { if (!open) closeDeleteDialog() }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar Retirada</AlertDialogTitle>
+              <AlertDialogDescription>
+                Escolha quanto da retirada deseja cancelar para o item {deleteItem.item_nome}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4">
+              <div className="text-sm text-slate-600">
+                Quantidade registrada: <span className="font-semibold text-slate-900">{deleteItem.quantidade}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="cancelar-tudo"
+                  checked={cancelarTudo}
+                  onCheckedChange={(checked) => setCancelarTudo(checked === true)}
+                />
+                <Label htmlFor="cancelar-tudo" className="text-sm">Cancelar tudo (apagar registro completo)</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quantidade-cancelar">Quantidade para cancelar</Label>
+                <Input
+                  id="quantidade-cancelar"
+                  type="number"
+                  min="1"
+                  step="1"
+                  disabled={cancelarTudo}
+                  value={quantidadeCancelar}
+                  onChange={(e) => setQuantidadeCancelar(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+            </div>
+
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+                Fechar
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+                {isDeleting ? "Cancelando..." : "Confirmar cancelamento"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

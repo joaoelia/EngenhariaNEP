@@ -5,11 +5,15 @@ import { useToast } from "@/hooks/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Eye, Pencil, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { ViewDialog } from "@/components/view-dialog"
-import { EditDialog } from "@/components/edit-dialog"
-import { DeleteDialog } from "@/components/delete-dialog"
+import { MateriaPrimaEditDialog } from "@/components/materia-prima-edit-dialog"
+import { Pagination } from "@/components/pagination"
 
 // Função para ajustar data de timezone
 const formatDateForDisplay = (dateString?: string) => {
@@ -25,8 +29,11 @@ interface MateriaPrima {
   id: number
   codigo: string
   descricao: string
-  tipo_material: string
+  tipo_material?: string
   quantidade_estoque: number
+  estoque_minimo?: number
+  estoque_maximo?: number
+  status_estoque?: "OK" | "ABAIXO_MINIMO" | "ACIMA_MAXIMO"
   unidade_medida: string
   fornecedor: string
   lote?: string
@@ -53,8 +60,51 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
   const [viewItem, setViewItem] = useState<MateriaPrima | null>(null)
   const [editItem, setEditItem] = useState<MateriaPrima | null>(null)
   const [deleteItem, setDeleteItem] = useState<MateriaPrima | null>(null)
+  const [cancelarTudo, setCancelarTudo] = useState(true)
+  const [quantidadeExcluir, setQuantidadeExcluir] = useState("")
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
-  const handleSaveEdit = async (data: Record<string, any>) => {
+  const openDeleteDialog = (item: MateriaPrima) => {
+    setDeleteItem(item)
+    setCancelarTudo(true)
+    setQuantidadeExcluir(String(item.quantidade_estoque ?? 0))
+    setDeleteError(null)
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteItem(null)
+    setCancelarTudo(true)
+    setQuantidadeExcluir("")
+    setDeleteError(null)
+    setIsDeleting(false)
+  }
+
+  const getStatusEstoqueLabel = (status?: string) => {
+    switch (status) {
+      case "ABAIXO_MINIMO":
+        return "Abaixo do mínimo"
+      case "ACIMA_MAXIMO":
+        return "Acima do máximo"
+      default:
+        return "Dentro da faixa"
+    }
+  }
+
+  const getStatusEstoqueColor = (status?: string) => {
+    switch (status) {
+      case "ABAIXO_MINIMO":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "ACIMA_MAXIMO":
+        return "bg-amber-100 text-amber-800 border-amber-200"
+      default:
+        return "bg-green-100 text-green-800 border-green-200"
+    }
+  }
+
+  const handleSaveEdit = async (data: FormData) => {
     try {
       const token = localStorage.getItem("jwt_token")
       if (!token) {
@@ -69,10 +119,9 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
       const response = await fetch(`http://localhost:8080/api/materia-prima/${editItem?.id}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: data,
       })
 
       if (!response.ok) {
@@ -91,7 +140,23 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
   }
 
   const handleDelete = async () => {
+    if (!deleteItem) return
+
+    if (!cancelarTudo) {
+      const quantidade = Number(quantidadeExcluir)
+      if (!Number.isFinite(quantidade) || quantidade <= 0) {
+        setDeleteError("Informe uma quantidade válida para exclusão")
+        return
+      }
+      if (quantidade > deleteItem.quantidade_estoque) {
+        setDeleteError("A quantidade para exclusão não pode ser maior que o estoque atual")
+        return
+      }
+    }
+
     try {
+      setIsDeleting(true)
+      setDeleteError(null)
       const token = localStorage.getItem("jwt_token")
       if (!token) {
         toast({
@@ -102,7 +167,15 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
         return
       }
 
-      const response = await fetch(`http://localhost:8080/api/materia-prima/${deleteItem?.id}`, {
+      const query = new URLSearchParams({
+        cancelar_tudo: cancelarTudo ? "true" : "false",
+      })
+
+      if (!cancelarTudo) {
+        query.append("quantidade", String(Math.round(Number(quantidadeExcluir))))
+      }
+
+      const response = await fetch(`http://localhost:8080/api/materia-prima/${deleteItem.id}?${query.toString()}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,17 +183,22 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao excluir matéria-prima")
+        let apiMessage = "Erro ao excluir matéria-prima"
+        try {
+          const errorData = await response.json()
+          apiMessage = errorData?.message || errorData?.error || apiMessage
+        } catch {
+          // ignore parse error and keep default message
+        }
+        throw new Error(apiMessage)
       }
 
-      setDeleteItem(null)
+      closeDeleteDialog()
       window.location.reload()
     } catch (err) {
-      toast({
-        title: "Erro",
-        description: "Falha ao deletar. Por favor, tente novamente.",
-        variant: "destructive",
-      })
+      setDeleteError(err instanceof Error ? err.message : "Falha ao deletar")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -135,13 +213,20 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
     )
   }
 
+  // Paginação
+  const totalPages = Math.ceil(materiaPrima.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedMateriaPrima = materiaPrima.slice(startIndex, startIndex + itemsPerPage)
+
   return (
-    <div className="rounded-md border border-slate-200">
-      <Table>
+    <div className="rounded-md border border-slate-200 overflow-hidden">
+      <div className="max-h-[430px] overflow-auto">
+        <Table className="text-sm [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:text-xs [&_th]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-slate-50">
         <TableHeader>
           <TableRow className="bg-slate-50">
             <TableHead className="font-semibold">Nome</TableHead>
             <TableHead className="font-semibold">Quantidade</TableHead>
+            <TableHead className="font-semibold">Estoque</TableHead>
             <TableHead className="font-semibold">Lote</TableHead>
             <TableHead className="font-semibold">Fornecedor</TableHead>
             <TableHead className="font-semibold">Data Entrada</TableHead>
@@ -149,12 +234,17 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {materiaPrima.map((item) => (
-            <TableRow key={item.id} className="hover:bg-slate-50">
+          {paginatedMateriaPrima.map((item) => (
+            <TableRow key={item.id} className="h-10 hover:bg-slate-50">
               <TableCell>{item.descricao}</TableCell>
               <TableCell>
                 <Badge variant="secondary">
                   {item.quantidade_estoque}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge className={getStatusEstoqueColor(item.status_estoque)}>
+                  {getStatusEstoqueLabel(item.status_estoque)}
                 </Badge>
               </TableCell>
               <TableCell>{item.lote || "-"}</TableCell>
@@ -172,7 +262,10 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
                     variant="ghost"
                     size="icon"
                     className="text-red-600 hover:text-red-700 cursor-pointer"
-                    onClick={() => setDeleteItem(item)}
+                    onClick={(event) => {
+                      event.currentTarget.blur()
+                      openDeleteDialog(item)
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -181,7 +274,17 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
+      {materiaPrima.length > itemsPerPage && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={materiaPrima.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
 
       {/* View Dialog */}
       {viewItem && (
@@ -197,6 +300,8 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
               label: "Quantidade",
               render: (value) => `${value}`,
             },
+            { key: "estoque_minimo", label: "Estoque Mínimo", type: "number" },
+            { key: "estoque_maximo", label: "Estoque Máximo", type: "number" },
             { key: "lote", label: "Lote" },
             { key: "fornecedor", label: "Fornecedor" },
             { key: "data_entrada", label: "Data de Entrada", render: (value) => formatDateForDisplay(value) },
@@ -214,32 +319,66 @@ export function MateriaPrimaTable({ materiaPrima }: MateriaPrimaTableProps) {
 
       {/* Edit Dialog */}
       {editItem && (
-        <EditDialog
+        <MateriaPrimaEditDialog
           open={!!editItem}
           onOpenChange={() => setEditItem(null)}
-          title="Editar Matéria-Prima"
           data={editItem}
-          fields={[
-            { key: "descricao", label: "Nome", required: true },
-            { key: "quantidade_estoque", label: "Quantidade", type: "number", required: true },
-            { key: "lote", label: "Lote" },
-            { key: "fornecedor", label: "Fornecedor", required: true },
-            { key: "data_entrada", label: "Data de Entrada", type: "date" },
-          ]}
           onSave={handleSaveEdit}
         />
       )}
 
       {/* Delete Dialog */}
       {deleteItem && (
-        <DeleteDialog
-          open={!!deleteItem}
-          onOpenChange={() => setDeleteItem(null)}
-          title="Excluir Matéria-Prima"
-          description="Tem certeza que deseja excluir esta matéria-prima?"
-          itemName={deleteItem.descricao}
-          onConfirm={handleDelete}
-        />
+        <AlertDialog open={!!deleteItem} onOpenChange={(open) => { if (!open) closeDeleteDialog() }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Matéria-Prima</AlertDialogTitle>
+              <AlertDialogDescription>
+                Escolha quanto do item {deleteItem.descricao} deseja excluir do cadastro.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4">
+              <div className="text-sm text-slate-600">
+                Quantidade atual: <span className="font-semibold text-slate-900">{deleteItem.quantidade_estoque}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="materia-prima-cancelar-tudo"
+                  checked={cancelarTudo}
+                  onCheckedChange={(checked) => setCancelarTudo(checked === true)}
+                />
+                <Label htmlFor="materia-prima-cancelar-tudo" className="text-sm">Excluir todo cadastro (apagar item)</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="materia-prima-quantidade-excluir">Quantidade para excluir</Label>
+                <Input
+                  id="materia-prima-quantidade-excluir"
+                  type="number"
+                  min="1"
+                  step="1"
+                  disabled={cancelarTudo}
+                  value={quantidadeExcluir}
+                  onChange={(e) => setQuantidadeExcluir(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+            </div>
+
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+                Fechar
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? "Excluindo..." : "Confirmar exclusão"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

@@ -41,6 +41,9 @@ public class PecaController {
             @RequestParam("numero_serie") String numeroSerie,
             @RequestParam("descricao") String descricao,
             @RequestParam(value = "aeronave_instalada", required = false) String aeronaveInstalada,
+            @RequestParam("quantidade_produzida") Integer quantidadeProduzida,
+            @RequestParam(value = "estoque_minimo", required = false) Integer estoqueMinimo,
+            @RequestParam(value = "estoque_maximo", required = false) Integer estoqueMaximo,
             @RequestParam("relatorio_inspecao") MultipartFile relatorioInspecao,
             @RequestParam(value = "fotos", required = false) MultipartFile[] fotos
     ) throws IOException {
@@ -50,12 +53,14 @@ public class PecaController {
         peca.setNumeroDesenho(numeroSerie);
         peca.setDescricao(descricao);
         peca.setAeronaveInstalada(aeronaveInstalada);
-        peca.setQuantidadeProduzida(1);
+        peca.setQuantidadeProduzida(quantidadeProduzida);
         peca.setUnidadeMedida("un");
         peca.setDataFabricacao(LocalDate.now());
         peca.setLoteProducao(numeroSerie);
         peca.setOperadorResponsavel("Não informado");
         peca.setStatusQualidade("Em_Inspecao");
+        peca.setEstoqueMinimo(estoqueMinimo);
+        peca.setEstoqueMaximo(estoqueMaximo);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(pecaService.createWithFiles(peca, relatorioInspecao, fotos));
     }
@@ -67,6 +72,9 @@ public class PecaController {
             @RequestParam("numero_serie") String numeroSerie,
             @RequestParam("descricao") String descricao,
             @RequestParam(value = "aeronave_instalada", required = false) String aeronaveInstalada,
+            @RequestParam("quantidade_produzida") Integer quantidadeProduzida,
+            @RequestParam(value = "estoque_minimo", required = false) Integer estoqueMinimo,
+            @RequestParam(value = "estoque_maximo", required = false) Integer estoqueMaximo,
             @RequestParam(value = "relatorio_inspecao", required = false) MultipartFile relatorioInspecao,
             @RequestParam(value = "fotos", required = false) MultipartFile[] fotos
     ) throws IOException {
@@ -76,6 +84,9 @@ public class PecaController {
         peca.setNumeroDesenho(numeroSerie);
         peca.setDescricao(descricao);
         peca.setAeronaveInstalada(aeronaveInstalada);
+        peca.setQuantidadeProduzida(quantidadeProduzida);
+        peca.setEstoqueMinimo(estoqueMinimo);
+        peca.setEstoqueMaximo(estoqueMaximo);
 
         return ResponseEntity.ok(pecaService.updateWithFiles(id, peca, relatorioInspecao, fotos));
     }
@@ -86,8 +97,11 @@ public class PecaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        pecaService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer quantidade,
+            @RequestParam(name = "cancelar_tudo", required = false, defaultValue = "true") Boolean cancelarTudo) {
+        pecaService.delete(id, quantidade, Boolean.TRUE.equals(cancelarTudo));
         return ResponseEntity.noContent().build();
     }
 
@@ -103,5 +117,14 @@ public class PecaController {
             @PathVariable Long id,
             @RequestParam("status") String status) {
         return ResponseEntity.ok(pecaService.atualizarStatus(id, status));
+    }
+
+    @DeleteMapping("/{id}/anexos")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable Long id,
+            @RequestParam String tipo,
+            @RequestParam(required = false) String nomeArquivo) throws java.io.IOException {
+        pecaService.deleteAttachment(id, tipo, nomeArquivo);
+        return ResponseEntity.noContent().build();
     }
 }

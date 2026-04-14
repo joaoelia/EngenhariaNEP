@@ -42,6 +42,14 @@ public class RetiradaService {
 
     @Transactional
     public Retirada create(Retirada retirada) {
+        if (retirada.getData() == null) {
+            retirada.setData(java.time.LocalDate.now());
+        }
+
+        if (retirada.getQuantidade() == null || retirada.getQuantidade() <= 0) {
+            throw new RuntimeException("Quantidade da retirada deve ser maior que zero");
+        }
+
         // Validar tipo e atualizar quantidade do item
         switch (retirada.getTipoItem()) {
             case "consumivel":
@@ -59,13 +67,9 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                int novaQuantidade = consumivel.getQuantidade() - retirada.getQuantidade().intValue();
-                if (novaQuantidade <= 0) {
-                    consumivelRepository.deleteById(consumivel.getId());
-                } else {
-                    consumivel.setQuantidade(novaQuantidade);
-                    consumivelRepository.save(consumivel);
-                }
+                int novaQuantidade = consumivel.getQuantidade() - retirada.getQuantidade();
+                consumivel.setQuantidade(Math.max(novaQuantidade, 0));
+                consumivelRepository.save(consumivel);
                 break;
 
             case "materia-prima":
@@ -94,13 +98,9 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                double novaQuantidadeMp = materiaPrima.getQuantidadeEstoque() - retirada.getQuantidade();
-                if (novaQuantidadeMp <= 0) {
-                    materiaPrimaRepository.deleteById(materiaPrima.getId());
-                } else {
-                    materiaPrima.setQuantidadeEstoque(novaQuantidadeMp);
-                    materiaPrimaRepository.save(materiaPrima);
-                }
+                int novaQuantidadeMp = materiaPrima.getQuantidadeEstoque() - retirada.getQuantidade();
+                materiaPrima.setQuantidadeEstoque(Math.max(novaQuantidadeMp, 0));
+                materiaPrimaRepository.save(materiaPrima);
                 break;
 
             case "peca":
@@ -122,17 +122,32 @@ public class RetiradaService {
                 }
                 
                 // Subtrair quantidade
-                int novaQuantidadePeca = (int) (peca.getQuantidadeProduzida() - retirada.getQuantidade().intValue());
-                if (novaQuantidadePeca <= 0) {
-                    pecaRepository.deleteById(peca.getId());
-                } else {
-                    peca.setQuantidadeProduzida(novaQuantidadePeca);
-                    pecaRepository.save(peca);
-                }
+                int novaQuantidadePeca = peca.getQuantidadeProduzida() - retirada.getQuantidade();
+                peca.setQuantidadeProduzida(Math.max(novaQuantidadePeca, 0));
+                pecaRepository.save(peca);
                 break;
 
             default:
                 throw new RuntimeException("Tipo de item inválido: " + retirada.getTipoItem());
+        }
+
+        var retiradaExistenteMesmoDia = retiradaRepository
+            .findTopByTipoItemAndItemIdAndDataAndPessoaOrderByIdDesc(
+                        retirada.getTipoItem(),
+                        retirada.getItemId(),
+                retirada.getData(),
+                retirada.getPessoa()
+                );
+
+        if (retiradaExistenteMesmoDia.isPresent()) {
+            Retirada retiradaExistente = retiradaExistenteMesmoDia.get();
+            retiradaExistente.setQuantidade(retiradaExistente.getQuantidade() + retirada.getQuantidade());
+
+            if (retiradaExistente.getObservacoes() == null || retiradaExistente.getObservacoes().isBlank()) {
+                retiradaExistente.setObservacoes(retirada.getObservacoes());
+            }
+
+            return retiradaRepository.save(retiradaExistente);
         }
 
         return retiradaRepository.save(retirada);
@@ -140,22 +155,68 @@ public class RetiradaService {
 
     @Transactional
     public void delete(Long id) {
+        cancelar(id, null, true);
+    }
+
+    @Transactional
+    public void cancelar(Long id, Integer quantidade, boolean cancelarTudo) {
         Retirada retirada = findById(id);
-        
-        // Reverter a quantidade do item ao deletar retirada
+
+        int quantidadeRegistrada = retirada.getQuantidade() != null ? retirada.getQuantidade() : 0;
+        if (quantidadeRegistrada <= 0) {
+            throw new RuntimeException("Retirada inválida: quantidade registrada deve ser maior que zero");
+        }
+
+        int quantidadeParaCancelar;
+        if (cancelarTudo) {
+            quantidadeParaCancelar = quantidadeRegistrada;
+        } else {
+            if (quantidade == null) {
+                throw new RuntimeException("Informe a quantidade que deseja cancelar");
+            }
+            if (quantidade <= 0) {
+                throw new RuntimeException("Quantidade para cancelamento deve ser maior que zero");
+            }
+            if (quantidade > quantidadeRegistrada) {
+                throw new RuntimeException("Quantidade para cancelamento não pode ser maior que a retirada registrada");
+            }
+            quantidadeParaCancelar = quantidade;
+        }
+
+        reverterQuantidadeDoItem(retirada, quantidadeParaCancelar);
+
+        boolean removerRegistro = cancelarTudo || quantidadeParaCancelar >= quantidadeRegistrada;
+        if (removerRegistro) {
+            retiradaRepository.deleteById(id);
+            return;
+        }
+
+        retirada.setQuantidade(quantidadeRegistrada - quantidadeParaCancelar);
+        retiradaRepository.save(retirada);
+    }
+
+    private void reverterQuantidadeDoItem(Retirada retirada, Integer quantidadeReversao) {
+        // Reverter a quantidade do item ao cancelar retirada
         switch (retirada.getTipoItem()) {
             case "consumivel":
                 Consumivel consumivel = consumivelRepository.findById(retirada.getItemId()).orElse(null);
+                if (consumivel == null && retirada.getItemPartNumber() != null && !retirada.getItemPartNumber().isBlank()) {
+                    consumivel = consumivelRepository.findByPartNumber(retirada.getItemPartNumber()).orElse(null);
+                }
+                if (consumivel == null && retirada.getItemNome() != null && !retirada.getItemNome().isBlank()) {
+                    consumivel = consumivelRepository.findByNome(retirada.getItemNome()).orElse(null);
+                }
+
                 if (consumivel == null) {
                     Consumivel novoConsumivel = new Consumivel();
                     novoConsumivel.setNome(retirada.getItemNome());
                     novoConsumivel.setPartNumber(retirada.getItemPartNumber());
                     novoConsumivel.setFornecedor(retirada.getItemFornecedor());
                     novoConsumivel.setLocalEstoque(retirada.getItemLocalEstoque());
-                    novoConsumivel.setQuantidade(retirada.getQuantidade().intValue());
+                    novoConsumivel.setQuantidade(quantidadeReversao);
                     consumivelRepository.save(novoConsumivel);
                 } else {
-                    consumivel.setQuantidade((int)(consumivel.getQuantidade() + retirada.getQuantidade().intValue()));
+                    consumivel.setQuantidade(consumivel.getQuantidade() + quantidadeReversao);
                     consumivelRepository.save(consumivel);
                 }
                 break;
@@ -170,7 +231,7 @@ public class RetiradaService {
                     novaMateriaPrima.setCodigo(codigo);
                     novaMateriaPrima.setDescricao(retirada.getItemNome());
                     novaMateriaPrima.setTipoMaterial(retirada.getItemNome());
-                    novaMateriaPrima.setQuantidadeEstoque(retirada.getQuantidade());
+                    novaMateriaPrima.setQuantidadeEstoque(quantidadeReversao);
                     novaMateriaPrima.setUnidadeMedida(retirada.getItemUnidadeMedida() != null ? retirada.getItemUnidadeMedida() : "peças");
                     novaMateriaPrima.setFornecedor(retirada.getItemFornecedor() != null ? retirada.getItemFornecedor() : "Desconhecido");
                     novaMateriaPrima.setLote(retirada.getItemLote());
@@ -186,7 +247,7 @@ public class RetiradaService {
                     novaMateriaPrima.setNotaFiscal(retirada.getItemNotaFiscal() != null ? retirada.getItemNotaFiscal() : "restaurado");
                     materiaPrimaRepository.save(novaMateriaPrima);
                 } else {
-                    materiaPrima.setQuantidadeEstoque(materiaPrima.getQuantidadeEstoque() + retirada.getQuantidade());
+                    materiaPrima.setQuantidadeEstoque(materiaPrima.getQuantidadeEstoque() + quantidadeReversao);
                     materiaPrimaRepository.save(materiaPrima);
                 }
                 break;
@@ -205,7 +266,7 @@ public class RetiradaService {
                     novaPeca.setDescricao(retirada.getItemNome());
                     novaPeca.setNumeroSerie(numeroSerie);
                     novaPeca.setNumeroDesenho(numeroSerie);
-                    novaPeca.setQuantidadeProduzida(retirada.getQuantidade().intValue());
+                    novaPeca.setQuantidadeProduzida(quantidadeReversao.intValue());
                     novaPeca.setUnidadeMedida(retirada.getItemUnidadeMedida() != null ? retirada.getItemUnidadeMedida() : "un");
                     novaPeca.setDataFabricacao(retirada.getData());
                     novaPeca.setStatusQualidade(retirada.getItemEspecificacao() != null && !retirada.getItemEspecificacao().isBlank() 
@@ -216,12 +277,10 @@ public class RetiradaService {
                     novaPeca.setFotos(retirada.getItemImagens());
                     pecaRepository.save(novaPeca);
                 } else {
-                    peca.setQuantidadeProduzida((int) (peca.getQuantidadeProduzida() + retirada.getQuantidade().intValue()));
+                    peca.setQuantidadeProduzida((int) (peca.getQuantidadeProduzida() + quantidadeReversao.intValue()));
                     pecaRepository.save(peca);
                 }
                 break;
         }
-        
-        retiradaRepository.deleteById(id);
     }
 }

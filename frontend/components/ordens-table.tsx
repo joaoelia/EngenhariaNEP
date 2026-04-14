@@ -12,6 +12,8 @@ import { DeleteDialog } from "@/components/delete-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Pagination } from "@/components/pagination"
+import { OrdemEditDialog } from "@/components/ordem-edit-dialog"
 
 interface Ordem {
   id: number
@@ -35,8 +37,11 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
   const { toast } = useToast()
   const [viewItem, setViewItem] = useState<Ordem | null>(null)
   const [deleteItem, setDeleteItem] = useState<Ordem | null>(null)
+  const [editItem, setEditItem] = useState<Ordem | null>(null)
   const [editingStatus, setEditingStatus] = useState<string>("")
   const [savingStatus, setSavingStatus] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   const handleDownloadPDF = async (ordem: Ordem) => {
     if (!ordem.arquivo_pdf) {
@@ -164,6 +169,11 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
     )
   }
 
+  // Paginação
+  const totalPages = Math.ceil(ordens.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedOrdens = ordens.slice(startIndex, startIndex + itemsPerPage)
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "concluída":
@@ -204,8 +214,9 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
   }
 
   return (
-    <div className="rounded-md border border-slate-200">
-      <Table>
+    <div className="rounded-md border border-slate-200 overflow-hidden">
+      <div className="max-h-[430px] overflow-auto">
+        <Table className="text-sm [&_th]:h-9 [&_th]:px-3 [&_th]:py-2 [&_th]:text-xs [&_th]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-slate-50">
         <TableHeader>
           <TableRow className="bg-slate-50">
             <TableHead className="font-semibold">Número</TableHead>
@@ -218,8 +229,8 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {ordens.map((item) => (
-            <TableRow key={item.id} className="hover:bg-slate-50">
+          {paginatedOrdens.map((item) => (
+            <TableRow key={item.id} className="h-10 hover:bg-slate-50">
               <TableCell className="font-mono text-sm font-semibold">{item.numero_ordem}</TableCell>
               <TableCell>
                 <Badge className={getTipoColor(item.tipo_ordem)}>{formatTipoDisplay(item.tipo_ordem)}</Badge>
@@ -234,6 +245,14 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => openViewDialog(item)}>
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="cursor-pointer"
+                    onClick={() => setEditItem(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   {item.arquivo_pdf && (
                     <Button
@@ -250,7 +269,10 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
                     variant="ghost"
                     size="icon"
                     className="text-red-600 hover:text-red-700 cursor-pointer"
-                    onClick={() => setDeleteItem(item)}
+                    onClick={(event) => {
+                      event.currentTarget.blur()
+                      setDeleteItem(item)
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -259,85 +281,128 @@ export function OrdensTable({ ordens, onUpdate }: OrdensTableProps) {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
+      {ordens.length > itemsPerPage && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={ordens.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
 
       {/* View Dialog */}
       {viewItem && (
         <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalhes da Ordem</DialogTitle>
-              <DialogDescription>Visualização e edição da ordem</DialogDescription>
+              <DialogTitle>Detalhes da Ordem — {viewItem.numero_ordem}</DialogTitle>
+              <DialogDescription>
+                <Badge className={getTipoColor(viewItem.tipo_ordem)}>{formatTipoDisplay(viewItem.tipo_ordem)}</Badge>
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-semibold text-slate-600">Número</Label>
-                  <p className="text-sm font-mono font-bold">{viewItem.numero_ordem}</p>
+                  <Label className="text-xs font-semibold text-slate-500">Projeto</Label>
+                  <p className="text-sm">{viewItem.projeto}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-semibold text-slate-600">Tipo</Label>
+                  <Label className="text-xs font-semibold text-slate-500">Part Number</Label>
+                  <p className="text-sm font-mono">{viewItem.part_number}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500">Data de Criação</Label>
+                  <p className="text-sm">{formatDate(viewItem.data_criacao)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500">Status</Label>
                   <div className="mt-1">
-                    <Badge className={getTipoColor(viewItem.tipo_ordem)}>
-                      {formatTipoDisplay(viewItem.tipo_ordem)}
-                    </Badge>
+                    <Select value={editingStatus} onValueChange={handleStatusChange} disabled={savingStatus}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Fazer">Fazer</SelectItem>
+                        <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                        <SelectItem value="Concluída">Concluída</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-semibold text-slate-600">Projeto</Label>
-                <p className="text-sm">{viewItem.projeto}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-semibold text-slate-600">Part Number</Label>
-                <p className="text-sm font-mono">{viewItem.part_number}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-semibold text-slate-600">Data de Criação</Label>
-                <p className="text-sm">{formatDate(viewItem.data_criacao)}</p>
-              </div>
-
-              <div>
-                <Label className="text-sm font-semibold text-slate-600">Status *</Label>
-                <Select
-                  value={editingStatus}
-                  onValueChange={handleStatusChange}
-                  disabled={savingStatus}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Fazer">Fazer</SelectItem>
-                    <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                    <SelectItem value="Concluída">Concluída</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               {viewItem.arquivo_pdf && (
                 <div>
-                  <Label className="text-sm font-semibold text-slate-600">PDF</Label>
+                  <Label className="text-xs font-semibold text-slate-500">PDF</Label>
                   <div className="mt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-blue-600 hover:text-blue-700"
-                      onClick={() => handleDownloadPDF(viewItem)}
-                    >
-                      <Download className="h-3 w-3 mr-2" />
-                      Baixar PDF
+                    <Button size="sm" variant="outline" className="text-blue-600 hover:text-blue-700" onClick={() => handleDownloadPDF(viewItem)}>
+                      <Download className="h-3 w-3 mr-2" /> Baixar PDF
                     </Button>
                   </div>
                 </div>
               )}
+
+              {viewItem.dados_formulario && (() => {
+                let parsed: Record<string, any> = {}
+                try { parsed = JSON.parse(viewItem.dados_formulario) } catch {}
+                const skip = new Set(["projeto", "partNumber", "part_number"])
+                const entries = Object.entries(parsed).filter(([k]) => !skip.has(k))
+                if (entries.length === 0) return null
+                return (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide border-b pb-1">Dados do Formulário</p>
+                    {entries.map(([key, value]) => {
+                      if (Array.isArray(value)) {
+                        if (value.length === 0) return null
+                        const cols = Object.keys(value[0] || {}).filter((c) => c !== "item")
+                        return (
+                          <div key={key} className="space-y-1">
+                            <p className="text-xs font-semibold text-slate-600 capitalize">{key.replace(/([A-Z])/g, " $1")}</p>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-50">
+                                    {cols.map((c) => <th key={c} className="border px-2 py-1 text-left capitalize">{c.replace(/([A-Z])/g, " $1")}</th>)}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {value.map((row: any, i: number) => (
+                                    <tr key={i}>
+                                      {cols.map((c) => <td key={c} className="border px-2 py-1">{row[c] ?? "-"}</td>)}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )
+                      }
+                      if (!value && value !== 0) return null
+                      return (
+                        <div key={key} className="grid grid-cols-3 gap-2 items-start">
+                          <span className="text-xs font-semibold text-slate-500 capitalize col-span-1">{key.replace(/([A-Z])/g, " $1")}</span>
+                          <span className="text-sm text-slate-900 col-span-2 break-words">{String(value)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Edit Dialog */}
+      <OrdemEditDialog
+        open={!!editItem}
+        onOpenChange={(o) => { if (!o) setEditItem(null) }}
+        data={editItem ?? {}}
+        onSave={onUpdate}
+      />
 
       {/* Delete Dialog */}
       {deleteItem && (

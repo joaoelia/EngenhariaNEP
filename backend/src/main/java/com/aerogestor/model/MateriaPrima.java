@@ -42,7 +42,15 @@ public class MateriaPrima {
 
     @Column(name = "quantidade_estoque", nullable = false)
     @JsonProperty("quantidade_estoque")
-    private Double quantidadeEstoque;
+    private Integer quantidadeEstoque;
+
+    @Column(name = "estoque_minimo")
+    @JsonProperty("estoque_minimo")
+    private Integer estoqueMinimo;
+
+    @Column(name = "estoque_maximo")
+    @JsonProperty("estoque_maximo")
+    private Integer estoqueMaximo;
 
     @Column(name = "unidade_medida", nullable = false)
     @JsonProperty("unidade_medida")
@@ -100,5 +108,23 @@ public class MateriaPrima {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Transient
+    @JsonProperty("status_estoque")
+    public String getStatusEstoque() {
+        if (quantidadeEstoque == null) {
+            return "OK";
+        }
+
+        if (estoqueMinimo != null && quantidadeEstoque < estoqueMinimo) {
+            return "ABAIXO_MINIMO";
+        }
+
+        if (estoqueMaximo != null && quantidadeEstoque > estoqueMaximo) {
+            return "ACIMA_MAXIMO";
+        }
+
+        return "OK";
     }
 }

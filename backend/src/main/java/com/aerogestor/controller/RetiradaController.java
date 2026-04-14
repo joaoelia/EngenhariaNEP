@@ -42,8 +42,11 @@ public class RetiradaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        retiradaService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestParam(name = "quantidade", required = false) Integer quantidade,
+            @RequestParam(name = "cancelar_tudo", required = false, defaultValue = "true") Boolean cancelarTudo) {
+        retiradaService.cancelar(id, quantidade, Boolean.TRUE.equals(cancelarTudo));
         return ResponseEntity.noContent().build();
     }
 }

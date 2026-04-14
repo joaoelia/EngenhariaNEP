@@ -58,9 +58,12 @@ public class OrdemController {
     public ResponseEntity<Ordem> updateWithPdf(
             @PathVariable Long id,
             @RequestParam("dados_formulario") String dadosFormulario,
+            @RequestParam(value = "projeto", required = false) String projeto,
+            @RequestParam(value = "part_number", required = false) String partNumber,
+            @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "arquivo_pdf", required = false) MultipartFile arquivoPdf
     ) throws IOException {
-        return ResponseEntity.ok(ordemService.updateWithPdf(id, dadosFormulario, arquivoPdf));
+        return ResponseEntity.ok(ordemService.updateWithPdf(id, dadosFormulario, projeto, partNumber, status, arquivoPdf));
     }
 
     @DeleteMapping("/{id}")

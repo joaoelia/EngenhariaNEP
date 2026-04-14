@@ -29,6 +29,14 @@ public class Consumivel {
     @Column(nullable = false)
     private Integer quantidade;
 
+    @Column(name = "estoque_minimo")
+    @JsonProperty("estoque_minimo")
+    private Integer estoqueMinimo;
+
+    @Column(name = "estoque_maximo")
+    @JsonProperty("estoque_maximo")
+    private Integer estoqueMaximo;
+
     @Column(nullable = false)
     private String fornecedor;
 
@@ -53,5 +61,23 @@ public class Consumivel {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Transient
+    @JsonProperty("status_estoque")
+    public String getStatusEstoque() {
+        if (quantidade == null) {
+            return "OK";
+        }
+
+        if (estoqueMinimo != null && quantidade < estoqueMinimo) {
+            return "ABAIXO_MINIMO";
+        }
+
+        if (estoqueMaximo != null && quantidade > estoqueMaximo) {
+            return "ACIMA_MAXIMO";
+        }
+
+        return "OK";
     }
 }

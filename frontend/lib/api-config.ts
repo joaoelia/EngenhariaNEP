@@ -1,5 +1,14 @@
 // Configuração centralizada da API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const resolveApiBaseUrl = (): string => {
+  const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const normalizedBaseUrl = rawBaseUrl.replace(/\/$/, "");
+
+  return normalizedBaseUrl.endsWith("/api")
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/api`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export const API_CONFIG = {
   BASE_URL: API_BASE_URL,

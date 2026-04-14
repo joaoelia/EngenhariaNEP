@@ -93,7 +93,7 @@ public class Retirada {
     private String itemImagens;
 
     @Column(nullable = false)
-    private Double quantidade;
+    private Integer quantidade;
 
     @Column(nullable = false)
     private String pessoa;

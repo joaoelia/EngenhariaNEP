@@ -106,12 +106,20 @@ public class OrdemService {
     public Ordem updateWithPdf(
             Long id,
             String dadosFormulario,
+            String projeto,
+            String partNumber,
+            String status,
             MultipartFile arquivoPdf
     ) throws IOException {
         Ordem existing = findById(id);
 
         // Update form data
         existing.setDadosFormulario(dadosFormulario);
+
+        // Update main entity fields if provided
+        if (projeto != null && !projeto.isBlank()) existing.setProjeto(projeto);
+        if (partNumber != null && !partNumber.isBlank()) existing.setPartNumber(partNumber);
+        if (status != null && !status.isBlank()) existing.setStatus(status);
 
         // Upload new PDF if provided
         if (arquivoPdf != null && !arquivoPdf.isEmpty()) {

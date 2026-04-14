@@ -5,6 +5,8 @@ interface Consumivel {
   nome: string;
   partNumber: string;
   quantidade: number;
+  estoqueMinimo?: number;
+  estoqueMaximo?: number;
   fornecedor: string;
   localEstoque: string;
 }
@@ -55,6 +57,8 @@ export function useConsumiveis() {
           nome: consumivel.nome,
           part_number: consumivel.partNumber,
           quantidade: consumivel.quantidade,
+          estoque_minimo: consumivel.estoqueMinimo,
+          estoque_maximo: consumivel.estoqueMaximo,
           fornecedor: consumivel.fornecedor,
           local_estoque: consumivel.localEstoque,
         }),
@@ -89,6 +93,8 @@ export function useConsumiveis() {
           nome: consumivel.nome,
           part_number: consumivel.partNumber,
           quantidade: consumivel.quantidade,
+          estoque_minimo: consumivel.estoqueMinimo,
+          estoque_maximo: consumivel.estoqueMaximo,
           fornecedor: consumivel.fornecedor,
           local_estoque: consumivel.localEstoque,
         }),

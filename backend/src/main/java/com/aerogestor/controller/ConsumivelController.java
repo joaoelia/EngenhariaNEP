@@ -37,8 +37,11 @@ public class ConsumivelController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        consumivelService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer quantidade,
+            @RequestParam(name = "cancelar_tudo", required = false, defaultValue = "true") Boolean cancelarTudo) {
+        consumivelService.delete(id, quantidade, Boolean.TRUE.equals(cancelarTudo));
         return ResponseEntity.noContent().build();
     }
 

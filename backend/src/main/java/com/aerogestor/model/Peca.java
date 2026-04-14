@@ -45,6 +45,14 @@ public class Peca {
     @JsonProperty("quantidade_produzida")
     private Integer quantidadeProduzida;
 
+    @Column(name = "estoque_minimo")
+    @JsonProperty("estoque_minimo")
+    private Integer estoqueMinimo;
+
+    @Column(name = "estoque_maximo")
+    @JsonProperty("estoque_maximo")
+    private Integer estoqueMaximo;
+
     @Column(name = "unidade_medida")
     @JsonProperty("unidade_medida")
     private String unidadeMedida;
@@ -101,5 +109,23 @@ public class Peca {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Transient
+    @JsonProperty("status_estoque")
+    public String getStatusEstoque() {
+        if (quantidadeProduzida == null) {
+            return "OK";
+        }
+
+        if (estoqueMinimo != null && quantidadeProduzida < estoqueMinimo) {
+            return "ABAIXO_MINIMO";
+        }
+
+        if (estoqueMaximo != null && quantidadeProduzida > estoqueMaximo) {
+            return "ACIMA_MAXIMO";
+        }
+
+        return "OK";
     }
 }

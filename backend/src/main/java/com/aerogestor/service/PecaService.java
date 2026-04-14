@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,25 @@ public class PecaService {
                 .orElseThrow(() -> new RuntimeException("Peça não encontrada com id: " + id));
     }
 
+    private void validarLimitesEstoque(Peca peca) {
+        if (peca.getEstoqueMinimo() != null && peca.getEstoqueMinimo() < 0) {
+            throw new RuntimeException("Estoque mínimo não pode ser negativo");
+        }
+        if (peca.getEstoqueMaximo() != null && peca.getEstoqueMaximo() < 0) {
+            throw new RuntimeException("Estoque máximo não pode ser negativo");
+        }
+        if (peca.getEstoqueMinimo() != null && peca.getEstoqueMaximo() != null
+                && peca.getEstoqueMinimo() > peca.getEstoqueMaximo()) {
+            throw new RuntimeException("Estoque mínimo não pode ser maior que o estoque máximo");
+        }
+    }
+
+    private void validarQuantidade(Peca peca) {
+        if (peca.getQuantidadeProduzida() == null || peca.getQuantidadeProduzida() <= 0) {
+            throw new RuntimeException("Quantidade deve ser maior que zero");
+        }
+    }
+
     @Transactional
     public Peca create(Peca peca) {
         if (pecaRepository.existsByCodigoPeca(peca.getCodigoPeca())) {
@@ -43,6 +63,8 @@ public class PecaService {
         if (peca.getQuantidadeProduzida() == null) {
             peca.setQuantidadeProduzida(1);
         }
+        validarQuantidade(peca);
+        validarLimitesEstoque(peca);
         return pecaRepository.save(peca);
     }
 
@@ -90,6 +112,11 @@ public class PecaService {
         existing.setNumeroDesenho(pecaData.getNumeroDesenho());
         existing.setNumeroSerie(pecaData.getNumeroSerie());
         existing.setAeronaveInstalada(pecaData.getAeronaveInstalada());
+        existing.setQuantidadeProduzida(pecaData.getQuantidadeProduzida());
+        existing.setEstoqueMinimo(pecaData.getEstoqueMinimo());
+        existing.setEstoqueMaximo(pecaData.getEstoqueMaximo());
+        validarQuantidade(existing);
+        validarLimitesEstoque(existing);
 
         if (relatorioInspecao != null && !relatorioInspecao.isEmpty()) {
             String relatorioPath = fileUploadService.uploadFile(relatorioInspecao);
@@ -128,6 +155,8 @@ public class PecaService {
         existing.setAeronaveInstalada(peca.getAeronaveInstalada());
         existing.setRevisao(peca.getRevisao());
         existing.setQuantidadeProduzida(peca.getQuantidadeProduzida());
+        existing.setEstoqueMinimo(peca.getEstoqueMinimo());
+        existing.setEstoqueMaximo(peca.getEstoqueMaximo());
         existing.setUnidadeMedida(peca.getUnidadeMedida());
         existing.setDataFabricacao(peca.getDataFabricacao());
         existing.setLoteProducao(peca.getLoteProducao());
@@ -139,19 +168,49 @@ public class PecaService {
         existing.setFotos(peca.getFotos());
         existing.setObservacoes(peca.getObservacoes());
 
+        validarQuantidade(existing);
+        validarLimitesEstoque(existing);
+
         return pecaRepository.save(existing);
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!pecaRepository.existsById(id)) {
-            throw new RuntimeException("Peça não encontrada com id: " + id);
+        delete(id, null, true);
+    }
+
+    @Transactional
+    public void delete(Long id, Integer quantidade, boolean cancelarTudo) {
+        Peca peca = pecaRepository.findById(id).orElse(null);
+        if (peca == null) {
+            return;
         }
-        pecaRepository.deleteById(id);
+
+        if (cancelarTudo) {
+            pecaRepository.delete(peca);
+            return;
+        }
+
+        if (quantidade == null || quantidade <= 0) {
+            throw new RuntimeException("Informe uma quantidade válida para exclusão parcial");
+        }
+
+        int quantidadeAtual = peca.getQuantidadeProduzida() == null ? 0 : peca.getQuantidadeProduzida();
+
+        if (quantidade >= quantidadeAtual) {
+            pecaRepository.delete(peca);
+            return;
+        }
+
+        peca.setQuantidadeProduzida(quantidadeAtual - quantidade);
+        pecaRepository.save(peca);
     }
 
     @Transactional
     public Peca atualizarQuantidade(Long id, Integer quantidade) {
+        if (quantidade == null || quantidade <= 0) {
+            throw new RuntimeException("Quantidade deve ser maior que zero");
+        }
         Peca peca = findById(id);
         peca.setQuantidadeProduzida(quantidade);
         return pecaRepository.save(peca);
@@ -162,5 +221,40 @@ public class PecaService {
         Peca peca = findById(id);
         peca.setStatusQualidade(status);
         return pecaRepository.save(peca);
+    }
+
+    @Transactional
+    public void deleteAttachment(Long id, String tipo, String nomeArquivo) throws IOException {
+        Peca peca = findById(id);
+
+        switch (tipo) {
+            case "relatorio_inspecao" -> {
+                if (peca.getRelatorioInspecao() != null) {
+                    fileUploadService.deleteFile(peca.getRelatorioInspecao());
+                    peca.setRelatorioInspecao(null);
+                }
+            }
+            case "foto" -> {
+                if (peca.getFotos() != null && nomeArquivo != null) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    List<String> fotosList = new ArrayList<>();
+                    try {
+                        String[] arr = mapper.readValue(peca.getFotos(), String[].class);
+                        for (String f : arr) fotosList.add(f);
+                    } catch (Exception e) {
+                        fotosList.add(peca.getFotos());
+                    }
+                    String finalNome = nomeArquivo;
+                    List<String> updated = fotosList.stream()
+                            .filter(f -> !f.equals(finalNome))
+                            .collect(Collectors.toList());
+                    fileUploadService.deleteFile(nomeArquivo);
+                    peca.setFotos(updated.isEmpty() ? null : mapper.writeValueAsString(updated));
+                }
+            }
+            default -> throw new RuntimeException("Tipo de anexo desconhecido: " + tipo);
+        }
+
+        pecaRepository.save(peca);
     }
 }

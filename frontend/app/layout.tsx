@@ -4,8 +4,8 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ClientWrapper } from "./client-wrapper";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geist = Geist({ subsets: ["latin"], preload: false });
+const _geistMono = Geist_Mono({ subsets: ["latin"], preload: false });
 
 export const metadata: Metadata = {
   title: "Aviation Parts - AeroGestor",

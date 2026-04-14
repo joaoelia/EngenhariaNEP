@@ -4,16 +4,51 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { Plus, Wrench, ArrowDownToLine, Loader } from "lucide-react"
+import { Plus, Wrench, ArrowDownToLine, Loader, Filter } from "lucide-react"
 import { PecasTable } from "@/components/pecas-table"
 import { RetiradaDialog } from "@/components/retirada-dialog"
 import { RetiradasTable } from "@/components/retiradas-table"
+
+type DateFilter = "mes-atual" | "30-dias" | "15-dias" | "7-dias" | "todos"
+
+function parseDateStr(dateStr: string | undefined): Date | null {
+  if (!dateStr) return null
+  const parts = dateStr.split("-")
+  if (parts.length !== 3) return null
+  const year = parseInt(parts[0])
+  const month = parseInt(parts[1]) - 1
+  const day = parseInt(parts[2])
+  return new Date(year, month, day)
+}
+
+function applyDateFilter<T>(items: T[], getDate: (item: T) => Date | null, filter: DateFilter): T[] {
+  if (filter === "todos") return items
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return items.filter((item) => {
+    const d = getDate(item)
+    if (!d) return false
+    if (filter === "mes-atual") {
+      return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
+    }
+    const daysMap: Record<string, number> = { "30-dias": 30, "15-dias": 15, "7-dias": 7 }
+    const days = daysMap[filter]
+    if (!days) return false
+    const cutoff = new Date(today)
+    cutoff.setDate(cutoff.getDate() - days)
+    return d >= cutoff
+  })
+}
 
 export default function PecasPage() {
   const [pecas, setPecas] = useState<any[]>([])
   const [retiradas, setRetiradas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTable, setActiveTable] = useState<"pecas" | "retiradas">("pecas")
+  const [retiradaDateFilter, setRetiradaDateFilter] = useState<DateFilter>("todos")
+  const [pecasDateFilter, setPecasDateFilter] = useState<DateFilter>("todos")
+  const [showOnlyOutOfRange, setShowOnlyOutOfRange] = useState(false)
 
   const fetchPecas = async () => {
     try {
@@ -80,7 +115,7 @@ export default function PecasPage() {
     }
   }
 
-  const handleDeleteRetirada = async (id: string) => {
+  const handleDeleteRetirada = async (id: string, options: { quantidade: number; cancelarTudo: boolean }) => {
     try {
       const token = localStorage.getItem("jwt_token")
 
@@ -88,7 +123,15 @@ export default function PecasPage() {
         throw new Error("Token não encontrado")
       }
 
-      const response = await fetch(`http://localhost:8080/api/retiradas/${id}`, {
+      const query = new URLSearchParams({
+        cancelar_tudo: options.cancelarTudo ? "true" : "false",
+      })
+
+      if (!options.cancelarTudo) {
+        query.append("quantidade", String(options.quantidade))
+      }
+
+      const response = await fetch(`http://localhost:8080/api/retiradas/${id}?${query.toString()}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -96,7 +139,14 @@ export default function PecasPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao deletar retirada")
+        let apiMessage = "Erro ao cancelar retirada"
+        try {
+          const errorData = await response.json()
+          apiMessage = errorData?.message || errorData?.error || apiMessage
+        } catch {
+          // ignore parse error and keep default message
+        }
+        throw new Error(apiMessage)
       }
 
       await fetchPecas()
@@ -111,6 +161,12 @@ export default function PecasPage() {
     fetchPecas()
     fetchRetiradas()
   }, [])
+
+  const filteredRetiradas = applyDateFilter(retiradas, (r) => parseDateStr(r.data), retiradaDateFilter)
+  const filteredPecasByDate = applyDateFilter(pecas, (p) => parseDateStr(p.data_fabricacao), pecasDateFilter)
+  const filteredPecas = showOnlyOutOfRange
+    ? filteredPecasByDate.filter((p) => p.status_estoque === "ABAIXO_MINIMO" || p.status_estoque === "ACIMA_MAXIMO")
+    : filteredPecasByDate
 
   if (loading) {
     return (
@@ -143,6 +199,8 @@ export default function PecasPage() {
                 nome: p.descricao,
                 part_number: p.codigo_peca,
                 quantidade: p.quantidade_produzida,
+                fornecedor: p.fornecedor || "Não informado",
+                local_estoque: p.aeronave_instalada || "Não informado",
               }))}
               tipo="peca"
               onRetiradaAdded={() => {
@@ -176,29 +234,73 @@ export default function PecasPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Peças Fabricadas</CardTitle>
-          <CardDescription>
-            {pecas.length} {pecas.length === 1 ? "peça cadastrada" : "peças cadastradas"}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div>
+                <CardTitle>
+                  {activeTable === "pecas" ? "Lista de Peças Fabricadas" : "Histórico de Retiradas"}
+                </CardTitle>
+                <CardDescription>
+                  {activeTable === "pecas"
+                    ? `${filteredPecas.length} ${filteredPecas.length === 1 ? "peça cadastrada" : "peças cadastradas"}`
+                    : "Últimas retiradas de peças do estoque"}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+                  <Filter className="h-3.5 w-3.5" />
+                  Filtro
+                </span>
+                {(["mes-atual", "30-dias", "15-dias", "7-dias", "todos"] as DateFilter[]).map((f) => (
+                  <Button
+                    key={f}
+                    variant={
+                      (activeTable === "pecas" ? pecasDateFilter : retiradaDateFilter) === f
+                        ? "default"
+                        : "outline"
+                    }
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() =>
+                      activeTable === "pecas" ? setPecasDateFilter(f) : setRetiradaDateFilter(f)
+                    }
+                  >
+                    {f === "mes-atual" ? "Mês atual" : f === "todos" ? "Todos" : f.replace("-", " ")}
+                  </Button>
+                ))}
+                {activeTable === "pecas" && (
+                  <Button
+                    variant={showOnlyOutOfRange ? "default" : "outline"}
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() => setShowOnlyOutOfRange((prev) => !prev)}
+                  >
+                    {showOnlyOutOfRange ? "Mostrar todos" : "Fora da faixa"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="h-8 px-3 text-xs"
+                onClick={() => setActiveTable(activeTable === "pecas" ? "retiradas" : "pecas")}
+              >
+                {activeTable === "pecas" ? "Histórico de Retiradas" : "Voltar para Lista"}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <PecasTable
-            pecas={pecas}
-            onChanged={async () => {
-              await fetchPecas()
-              await fetchRetiradas()
-            }}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Retiradas</CardTitle>
-          <CardDescription>Últimas retiradas de peças do estoque</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RetiradasTable retiradas={retiradas} onDelete={handleDeleteRetirada} />
+          {activeTable === "pecas" ? (
+            <PecasTable
+              pecas={filteredPecas}
+              onChanged={async () => {
+                await fetchPecas()
+                await fetchRetiradas()
+              }}
+            />
+          ) : (
+            <RetiradasTable retiradas={filteredRetiradas} onDelete={handleDeleteRetirada} />
+          )}
         </CardContent>
       </Card>
     </div>

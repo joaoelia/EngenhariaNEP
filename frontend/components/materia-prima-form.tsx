@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export function MateriaPrimaForm() {
   const router = useRouter()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [certComposicao, setCertComposicao] = useState<File | null>(null)
   const [relatorioPropriedades, setRelatorioPropriedades] = useState<File | null>(null)
@@ -29,6 +31,8 @@ export function MateriaPrimaForm() {
       // Adicionar campos de texto
       const nome = (formElement.querySelector("#nome") as HTMLInputElement)?.value
       const quantidade = (formElement.querySelector("#quantidade") as HTMLInputElement)?.value
+      const estoqueMinimo = (formElement.querySelector("#estoque_minimo") as HTMLInputElement)?.value
+      const estoqueMaximo = (formElement.querySelector("#estoque_maximo") as HTMLInputElement)?.value
       const lote = (formElement.querySelector("#lote") as HTMLInputElement)?.value
       const altura = (formElement.querySelector("#altura") as HTMLInputElement)?.value
       const largura = (formElement.querySelector("#largura") as HTMLInputElement)?.value
@@ -51,8 +55,30 @@ export function MateriaPrimaForm() {
         return
       }
 
+      const quantidadeInt = Number.parseInt(quantidade, 10)
+      if (!Number.isInteger(quantidadeInt) || quantidadeInt <= 0) {
+        throw new Error("Quantidade deve ser um número inteiro maior que zero")
+      }
+
+      if (estoqueMinimo && estoqueMaximo && Number(estoqueMinimo) > Number(estoqueMaximo)) {
+        throw new Error("Estoque mínimo não pode ser maior que o estoque máximo")
+      }
+
+      const estoqueMinimoInt = estoqueMinimo ? Number.parseInt(estoqueMinimo, 10) : null
+      const estoqueMaximoInt = estoqueMaximo ? Number.parseInt(estoqueMaximo, 10) : null
+
+      if (estoqueMinimo && !Number.isInteger(Number(estoqueMinimo))) {
+        throw new Error("Estoque mínimo deve ser um número inteiro")
+      }
+
+      if (estoqueMaximo && !Number.isInteger(Number(estoqueMaximo))) {
+        throw new Error("Estoque máximo deve ser um número inteiro")
+      }
+
       formData.append("nome", nome)
-      formData.append("quantidade", quantidade)
+      formData.append("quantidade", String(quantidadeInt))
+      if (estoqueMinimoInt !== null) formData.append("estoque_minimo", String(estoqueMinimoInt))
+      if (estoqueMaximoInt !== null) formData.append("estoque_maximo", String(estoqueMaximoInt))
       formData.append("fornecedor", fornecedor)
       
       if (lote) formData.append("lote", lote)
@@ -138,12 +164,22 @@ export function MateriaPrimaForm() {
 
             <div className="space-y-2">
               <Label htmlFor="quantidade">Quantidade *</Label>
-              <Input id="quantidade" name="quantidade" type="number" step="0.01" required placeholder="0" />
+              <Input id="quantidade" name="quantidade" type="number" step="1" min="1" required placeholder="0" />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="lote">Lote</Label>
               <Input id="lote" name="lote" placeholder="Número do lote" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
+              <Input id="estoque_minimo" name="estoque_minimo" type="number" step="1" min="0" placeholder="0" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estoque_maximo">Estoque Máximo</Label>
+              <Input id="estoque_maximo" name="estoque_maximo" type="number" step="1" min="0" placeholder="0" />
             </div>
 
             <div className="space-y-2">
